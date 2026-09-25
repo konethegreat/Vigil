@@ -1,0 +1,148 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Repository ignore rules for the polyglot monorepo; lockfiles are never ignored (P0)
+#
+# Lockfiles are COMMITTED on purpose (INSTRUCTIONS §6 rule 5; AI_COMMUNICATION MSG-005):
+#   Cargo.lock · go.sum · go.work.sum · pnpm-lock.yaml · uv.lock · gradle.lockfile · mix.lock ·
+#   .terraform.lock.hcl. Do not add any of them (or *.lock) here.
+# scripts/validate-compliance.py fails the build if a file excluded here is tracked anyway.
+
+# ── Secrets & environment (INSTRUCTIONS §9.10, §10 #4) ────────────────────────
+.env
+.env.*
+*.env
+!.env.example
+.secrets
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+cosign.key
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+.terraform/
+crash.log
+crash.*.log
+
+# ── Local engineer identity profiles (INSTRUCTIONS §1.4) ──────────────────────
+docs/engineers/*
+!docs/engineers/.gitkeep
+
+# ── Java / Gradle ─────────────────────────────────────────────────────────────
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+*.class
+hs_err_pid*
+replay_pid*
+.kotlin/
+
+# ── Kotlin / Android (edge/field-app) ─────────────────────────────────────────
+local.properties
+captures/
+.cxx/
+.externalNativeBuild/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# ── Node / TypeScript / Next.js (apps/cockpit, sdks/ts, tests/e2e) ────────────
+node_modules/
+.pnpm-store/
+.next/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+coverage/
+storybook-static/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+playwright-report/
+blob-report/
+test-results/
+**/playwright/.auth/
+**/playwright/.cache/
+
+# ── Python / uv ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+.eggs/
+dist/
+.tox/
+.nox/
+.ipynb_checkpoints/
+
+# ── Rust ──────────────────────────────────────────────────────────────────────
+target/
+**/*.rs.bk
+*.pdb
+
+# ── Go ────────────────────────────────────────────────────────────────────────
+*.exe
+*.exe~
+*.test
+*.out
+__debug_bin*
+
+# ── Elixir (services/comms, if ADR at P28 selects it) ─────────────────────────
+services/comms/_build/
+services/comms/deps/
+services/comms/.elixir_ls/
+*.ez
+erl_crash.dump
+
+# ── CI & tooling outputs ──────────────────────────────────────────────────────
+sbom*.spdx.json
+relay-release-*.json
+*.sarif
+docker-compose.override.yml
+
+# ── IDEs & editors ────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/*
+!.vscode/extensions.json
+.fleet/
+.project
+.classpath
+.settings/
+.factorypath
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ── OS files ──────────────────────────────────────────────────────────────────
+.DS_Store
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ── Logs & scratch ────────────────────────────────────────────────────────────
+*.log
+tmp/
+.tmp/

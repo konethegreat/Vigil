@@ -1,0 +1,51 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Line-ending normalisation, binary types and generated-code markers (P0)
+
+# Normalise every text file to LF in the repository and in working trees.
+* text=auto eol=lf
+
+# Windows batch files need CRLF (e.g. gradlew.bat).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary content: never diffed or normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.xz binary
+*.zst binary
+*.jar binary
+*.keystore binary
+*.parquet binary
+*.arrow binary
+*.pmtiles binary
+*.mbtiles binary
+*.sqlite binary
+*.db binary
+*.wasm binary
+
+# Generated code: collapsed in PR diffs and excluded from language statistics.
+# sdks/_codegen/ is the hand-written generator harness (P2), not output.
+sdks/** linguist-generated=true
+sdks/_codegen/** linguist-generated=false
+*.pb.go linguist-generated=true
+*_pb2.py linguist-generated=true
+*_pb2.pyi linguist-generated=true
+*_pb2_grpc.py linguist-generated=true
+*_pb.ts linguist-generated=true
+*_pb.js linguist-generated=true
+
+# Lockfiles stay visible in diffs on purpose: dependency changes need supply-chain review.
+
+# Research appendices are documentation, not code.
+docs/research/** linguist-documentation=true
