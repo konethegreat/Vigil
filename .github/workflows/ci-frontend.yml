@@ -1,0 +1,120 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Cockpit CI: Prettier, ESLint, tsc, Vitest, next build and an axe accessibility stub, skipped until apps/cockpit exists (P0)
+#
+# Skill §3 ci-frontend for apps/cockpit (P10+). pnpm reads its version from the `packageManager`
+# field of package.json (root workspace, else apps/cockpit), which P1/P10 must set.
+# Required status check: the `ci-frontend` gate job. Local mirror: `just ci-frontend`.
+name: ci-frontend
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: "24" # Node 24 LTS (INSTRUCTIONS §6)
+
+jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read # dorny/paths-filter lists PR files through the API
+    outputs:
+      cockpit: ${{ steps.decide.outputs.cockpit }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Which paths changed?
+        id: filter
+        if: ${{ !env.ACT }} # under `act` the cockpit is checked whenever it exists
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          base: ${{ github.ref_name }}
+          filters: |
+            cockpit:
+              - 'apps/cockpit/**'
+              - 'sdks/ts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci-frontend.yml'
+      - name: Decide (changed AND apps/cockpit present)
+        id: decide
+        env:
+          CHANGED: ${{ steps.filter.outputs.cockpit }}
+        run: |
+          if [ "${CHANGED:-true}" = "true" ] && [ -f apps/cockpit/package.json ]; then
+            echo "cockpit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "cockpit=false" >> "$GITHUB_OUTPUT"
+            echo "Cockpit gates skipped: apps/cockpit is absent (P10) or unchanged."
+          fi
+
+  cockpit:
+    name: cockpit
+    needs: changes
+    if: needs.changes.outputs.cockpit == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/cockpit
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          package_json_file: ${{ hashFiles('package.json') != '' && 'package.json' || 'apps/cockpit/package.json' }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: "**/pnpm-lock.yaml"
+      - name: pnpm install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Prettier (npx prettier --check .; pnpm exec never downloads)
+        timeout-minutes: 3
+        run: pnpm exec prettier --check .
+      - name: ESLint (pnpm lint)
+        timeout-minutes: 3
+        run: pnpm lint
+      - name: TypeScript strict check (tsc --noEmit)
+        timeout-minutes: 3
+        run: pnpm exec tsc --noEmit
+      - name: Vitest (pnpm test)
+        run: pnpm test
+      - name: Next.js build (pnpm build)
+        run: pnpm build
+      - name: Accessibility (axe), a stub until P10 adds a test:a11y script
+        run: |
+          if jq -e '.scripts["test:a11y"]' package.json > /dev/null; then
+            pnpm run test:a11y
+          else
+            echo "::notice::No test:a11y script yet. P10 'Done when' needs axe: 0 serious violations; add test:a11y (e.g. @axe-core/playwright) to activate this gate."
+          fi
+
+  ci-frontend:
+    name: ci-frontend
+    if: always()
+    needs: [changes, cockpit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Cockpit gates passed or were skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null

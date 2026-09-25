@@ -1,0 +1,58 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Fast PR governance gate: compliance validator (branch, hygiene, WORKLOG vs base, append-only ledgers, attribution, PR title) and clean-tree check (P0)
+#
+# Skill §3: fast verification (< 45 s). Every rule lives in scripts/validate-compliance.py, so the
+# pre-commit hook, `just validate` and this workflow cannot disagree:
+#   PR title convention ....... type(P<ID>|repo): summary (PR_TITLE, INSTRUCTIONS §3)
+#   WORKLOG.md updated ........ changed vs origin/<base> (INSTRUCTIONS §12)
+#   append-only ledgers ....... WORKLOG.md, docs/API_DESIGN.md, docs/AI_COMMUNICATION.md (Rule 2)
+#   forbidden/untracked files . docs/engineers/*, .env*, node_modules/ … and anything .gitignore excludes
+#   attribution headers ....... INSTRUCTIONS §8
+# Local equivalent: `just act-pr`, or `python scripts/validate-compliance.py --ci --base develop`.
+name: pr-checks
+
+on:
+  pull_request:
+    # `edited` re-runs the checks when the PR title (or base branch) is changed.
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    name: pr-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 3 # skill §4.3: linters ≤ 3 min; target < 45 s
+    steps:
+      - name: Checkout (full history, so the validator can diff against the base branch)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Compliance validator (--ci)
+        env:
+          # Untrusted PR metadata is passed through env, never interpolated into `run:`.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_REF: ${{ github.base_ref }}
+          # GITHUB_HEAD_REF is set by Actions; the validator reads it before `git rev-parse`
+          # because pull_request checkouts are detached (AI_COMMUNICATION MSG-004).
+        run: python scripts/validate-compliance.py --ci --base "$BASE_REF"
+
+      - name: Working tree is clean (no untracked or modified files)
+        run: |
+          dirty="$(git status --porcelain --untracked-files=all)"
+          if [ -n "$dirty" ]; then
+            echo "::error::Unexpected untracked or modified files:"
+            echo "$dirty"
+            exit 1
+          fi

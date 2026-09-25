@@ -1,0 +1,183 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Security scans: Semgrep SAST, Bandit, Gitleaks, Trivy (vulnerabilities + IaC misconfiguration) and lockfile auditors (P0)
+#
+# Skill §3 security-scan; INSTRUCTIONS §9.10 ("Gitleaks runs in CI") and §10 #14 (never disable a
+# scan to get a green build: fix the finding). Language auditors run only when their lockfiles exist.
+# Gitleaks runs as the MIT-licensed CLI (checksum-verified) instead of gitleaks-action, which is
+# not MIT, needs a licence key for organisation repos and reports repo metadata to a third party.
+# Required status check: the `security-scan` gate job.
+name: security-scan
+
+on:
+  pull_request:
+  schedule:
+    - cron: "23 3 * * 1" # weekly: Mondays 03:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  SEMGREP_VERSION: "1.178.0"
+  BANDIT_VERSION: "1.9.4"
+  GITLEAKS_VERSION: "8.30.1"
+  PIP_AUDIT_VERSION: "2.10.1"
+  GOVULNCHECK_VERSION: "v1.8.0"
+  GO_VERSION: "1.27.1"
+
+jobs:
+  semgrep:
+    name: semgrep (SAST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - name: Semgrep (all languages, registry rules; WARNING and ERROR findings block)
+        run: |
+          python -m pip install --quiet "semgrep==${SEMGREP_VERSION}"
+          semgrep scan --error --metrics=off --severity WARNING --severity ERROR \
+            --config p/default --config p/owasp-top-ten
+
+  bandit:
+    name: bandit (Python SAST)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+      - name: Bandit (medium+ severity and confidence), when Python files are tracked
+        run: |
+          if ! git ls-files -- '*.py' | grep -q .; then
+            echo "No Python files tracked: nothing to scan."
+            exit 0
+          fi
+          python -m pip install --quiet "bandit==${BANDIT_VERSION}"
+          git ls-files -z -- '*.py' | xargs -0 bandit --severity-level medium --confidence-level medium
+
+  gitleaks:
+    name: gitleaks (secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks CLI (checksum-verified release)
+        run: |
+          cd "$RUNNER_TEMP"
+          release="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "${release}/${tarball}"
+          curl -fsSLO "${release}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${tarball}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
+          tar -xzf "${tarball}" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - name: Scan commits (the PR's commits, or the full history on schedule)
+        env:
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -n "$PR_BASE" ]; then
+            gitleaks git --no-banner --redact --verbose --log-opts="${PR_BASE}..${PR_HEAD}" .
+          else
+            gitleaks git --no-banner --redact --verbose .
+          fi
+
+  trivy:
+    name: trivy (vulnerabilities + misconfiguration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Trivy filesystem scan (lockfiles, Dockerfiles, IaC)
+        # Like every action in these workflows, pinned to a full commit SHA (tag in the comment):
+        # tags are mutable. Bump the SHA and the comment together (Dependabot does both).
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  dependency-audit:
+    name: dependency audits (cargo-audit · govulncheck · pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Which lockfiles exist?
+        id: present
+        run: |
+          {
+            echo "rust=$([ -f Cargo.lock ] && echo true || echo false)"
+            echo "go=$(git ls-files -- 'go.mod' '*/go.mod' | grep -q . && echo true || echo false)"
+            echo "python=$([ -f uv.lock ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install cargo-audit
+        if: steps.present.outputs.rust == 'true'
+        uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2
+        with:
+          tool: cargo-audit
+      - name: cargo-audit (Cargo.lock vs RustSec)
+        if: steps.present.outputs.rust == 'true'
+        run: cargo audit
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: steps.present.outputs.go == 'true'
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: govulncheck (every Go module)
+        if: steps.present.outputs.go == 'true'
+        run: |
+          go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
+          status=0
+          while IFS= read -r mod; do
+            (cd "$(dirname "$mod")" && govulncheck ./...) || status=1
+          done < <(git ls-files -- 'go.mod' '*/go.mod')
+          exit "$status"
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        if: steps.present.outputs.python == 'true'
+      - name: pip-audit (uv.lock, hashed and fully pinned)
+        if: steps.present.outputs.python == 'true'
+        run: |
+          uv export --locked --all-packages --no-emit-workspace --format requirements-txt \
+            --output-file "$RUNNER_TEMP/requirements-audit.txt"
+          uvx --from "pip-audit==${PIP_AUDIT_VERSION}" pip-audit --strict --disable-pip \
+            --requirement "$RUNNER_TEMP/requirements-audit.txt"
+
+  security-scan:
+    name: security-scan
+    if: always()
+    needs: [semgrep, bandit, gitleaks, trivy, dependency-audit]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every scanner passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null

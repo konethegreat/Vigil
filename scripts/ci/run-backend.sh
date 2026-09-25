@@ -1,0 +1,175 @@
+#!/usr/bin/env bash
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Local backend CI runner: the ci-backend.yml gates for every language whose project exists (P0)
+#
+# Usage: scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto ...]
+# Runs inside docker-compose.ci.yml (ci-backend, ci-<language>) or on any machine with the toolchains.
+# A language is SKIPPED when its project does not exist yet, or (with a warning) when its toolchain
+# is not installed here; GitHub Actions still runs that gate. Exits 1 if any gate fails.
+# Keep the commands identical to .github/workflows/ci-backend.yml.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../.."
+
+: "${GOLANGCI_LINT_VERSION:=v2.14.0}" # keep in step with ci-backend.yml
+
+SUMMARY=()
+FAILED=0
+TOOL_SKIPS=0
+
+record() { SUMMARY+=("$(printf '%-7s %-5s %s' "$1" "$2" "$3")"); }
+
+# gate LANG DESCRIPTION COMMAND... : run one check and record PASS or FAIL.
+gate() {
+  local lang="$1" desc="$2"
+  shift 2
+  printf '\n==> [%s] %s\n    $ %s\n' "$lang" "$desc" "$*"
+  if "$@"; then
+    record "$lang" PASS "$desc"
+  else
+    record "$lang" FAIL "$desc"
+    FAILED=1
+    return 1
+  fi
+}
+
+# have LANG TOOL... : true when every tool is installed; otherwise records a SKIP for LANG.
+have() {
+  local lang="$1" tool
+  shift
+  for tool in "$@"; do
+    if ! command -v "$tool" > /dev/null 2>&1; then
+      record "$lang" SKIP "'$tool' is not installed here (GitHub Actions still runs this gate)"
+      TOOL_SKIPS=1
+      return 1
+    fi
+  done
+}
+
+in_dir() {
+  local dir="$1"
+  shift
+  (cd "$dir" && "$@")
+}
+
+# Source files, excluding dependency and build directories.
+find_sources() {
+  find . \( -name .git -o -name node_modules -o -name vendor -o -name target -o -name .venv \) -prune \
+    -o "$@" -print
+}
+
+python_gates() {
+  [ -f pyproject.toml ] || { record python SKIP "no pyproject.toml workspace yet (P1)"; return 0; }
+  have python uv || return 0
+  gate python "uv sync --locked" uv sync --locked --all-packages || return 0
+  gate python "ruff check" uv run ruff check . || true
+  gate python "ruff format --check" uv run ruff format --check . || true
+  gate python "pytest (coverage >= 85%)" \
+    uv run pytest --cov --cov-report=term-missing --cov-fail-under=85 || true
+  if [ -n "$(find_sources \( -path '*/connectors/*.py' -o -path '*/policy/*.py' \) | head -n 1)" ]; then
+    gate python "100% coverage: connectors/ and policy/" \
+      uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100 || true
+  fi
+}
+
+java_gates() {
+  [ -f gradlew ] || { record java SKIP "no Gradle build yet (P1)"; return 0; }
+  have java java || return 0
+  gate java "gradlew spotlessCheck check test" ./gradlew --no-daemon spotlessCheck check test || true
+}
+
+rust_gates() {
+  [ -f Cargo.toml ] || { record rust SKIP "no Cargo workspace yet (P3)"; return 0; }
+  have rust cargo || return 0
+  if ! cargo fmt --version > /dev/null 2>&1 || ! cargo clippy --version > /dev/null 2>&1; then
+    rustup component add rustfmt clippy || true # the official rust image ships a minimal profile
+  fi
+  gate rust "cargo fmt --check" cargo fmt --all --check || true
+  gate rust "cargo clippy -D warnings" \
+    cargo clippy --workspace --all-targets --locked -- -D warnings || true
+  gate rust "cargo test" cargo test --workspace --locked || true
+}
+
+gofmt_clean() {
+  local unformatted
+  unformatted="$(find_sources -name '*.go' | tr '\n' '\0' | xargs -0 -r gofmt -l)"
+  [ -z "$unformatted" ] || { printf 'gofmt -w needed for:\n%s\n' "$unformatted"; return 1; }
+}
+
+go_gates() {
+  local modules module dir
+  modules="$(find_sources -name go.mod | sort)"
+  [ -n "$modules" ] || { record go SKIP "no Go modules yet (P20)"; return 0; }
+  have go go || return 0
+  if ! command -v golangci-lint > /dev/null 2>&1; then
+    go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}" || true
+    PATH="$(go env GOPATH)/bin:$PATH"
+  fi
+  gate go "gofmt" gofmt_clean || true
+  while IFS= read -r module; do
+    dir="$(dirname "$module")"
+    gate go "golangci-lint ($dir)" in_dir "$dir" golangci-lint run ./... || true
+    gate go "go test ./... ($dir)" in_dir "$dir" go test ./... || true
+  done <<< "$modules"
+}
+
+kotlin_gates() {
+  [ -f edge/field-app/gradlew ] || { record kotlin SKIP "no edge/field-app yet (P27)"; return 0; }
+  if [ -z "${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}" ]; then
+    record kotlin SKIP "Android SDK is not installed here (GitHub Actions still runs this gate)"
+    TOOL_SKIPS=1
+    return 0
+  fi
+  have kotlin java || return 0
+  gate kotlin "gradlew check (edge/field-app)" in_dir edge/field-app ./gradlew --no-daemon check || true
+}
+
+elixir_gates() {
+  [ -f services/comms/mix.exs ] || { record elixir SKIP "no services/comms mix project (P28)"; return 0; }
+  have elixir mix || return 0
+  gate elixir "mix deps.get" in_dir services/comms env MIX_ENV=test mix deps.get || return 0
+  gate elixir "mix format --check-formatted" \
+    in_dir services/comms env MIX_ENV=test mix format --check-formatted || true
+  gate elixir "mix credo --strict" in_dir services/comms env MIX_ENV=test mix credo --strict || true
+  gate elixir "mix test" in_dir services/comms env MIX_ENV=test mix test || true
+}
+
+proto_gates() {
+  [ -f proto/buf.yaml ] || { record proto SKIP "no proto/buf.yaml yet (P2)"; return 0; }
+  have proto buf git || return 0
+  gate proto "buf lint" buf lint proto || true
+  if git rev-parse --verify --quiet refs/heads/develop > /dev/null \
+    && git cat-file -e develop:proto/buf.yaml 2> /dev/null; then
+    gate proto "buf breaking (against develop)" \
+      buf breaking proto --against ".git#branch=develop,subdir=proto" || true
+  else
+    record proto SKIP "buf breaking: no local develop branch with proto/buf.yaml to compare against"
+  fi
+}
+
+[ "$#" -gt 0 ] || set -- all
+for language in "$@"; do
+  case "$language" in
+    all) python_gates; java_gates; rust_gates; go_gates; kotlin_gates; elixir_gates; proto_gates ;;
+    python) python_gates ;;
+    java) java_gates ;;
+    rust) rust_gates ;;
+    go) go_gates ;;
+    kotlin) kotlin_gates ;;
+    elixir) elixir_gates ;;
+    proto) proto_gates ;;
+    *) echo "unknown language '$language' (expected: all python java rust go kotlin elixir proto)" >&2; exit 2 ;;
+  esac
+done
+
+LINE="============================================================"
+printf '\n%s\nVigil — local backend CI summary\n%s\n' "$LINE" "$LINE"
+printf '%s\n' "${SUMMARY[@]}"
+echo "$LINE"
+if [ "$TOOL_SKIPS" -eq 1 ]; then
+  echo "WARNING: some present projects were skipped because their toolchain is missing here."
+fi
+if [ "$FAILED" -eq 1 ]; then
+  echo "RESULT: FAIL"
+  exit 1
+fi
+echo "RESULT: PASS"
