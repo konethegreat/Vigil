@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Branching, merge and release strategy (P0) -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Codex branch compatibility -->
 
 # Vigil — Branching Strategy
 
@@ -14,6 +15,7 @@
 | Bug fix | `bugfix/P<ID>-<slug>` | `develop` | `develop` | Fix inside a phase's territory |
 | Fix | `fix/<slug>` | `develop` | `develop` | Small cross-cutting fix approved in AI_COMMUNICATION |
 | Chore | `chore/<slug>` | `develop` | `develop` | Tooling and docs only (no product code) |
+| Codex workspace | `codex/<slug>` | Current authorised checkout | `develop` | App-managed implementation branch; record scope in an ADR and the work log. No merge or protection bypass. |
 | Release | `release/v<X.Y.Z>` | `develop` | `main`, then back into `develop` through a back-merge PR from `main` | Stabilisation, version bump, release notes |
 | Hotfix | `hotfix/<slug>` | `main` | `main`, then back into `develop` through a back-merge PR from `main` | Urgent production fix |
 

@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Master project plan: tiers, phases P0–P43, file ownership, conflict rules (P0) -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -1038,3 +1039,9 @@
 10. **Frozen Blueprints Are Law.**
     - `ARCHITECTURE.md`, `VIGIL_DOMAIN_BLUEPRINT.md` and `DATA_MODEL.md` are 🧊 frozen.
     - A phase may not reinterpret them to fit its own needs. If a blueprint is wrong, stop, write an ADR, and get the lead architect's approval first.
+
+## Founder-authorised mission increment 01 — 2026-09-25
+
+**Owner:** Kone Tshivhinda (OpenAI Codex GPT-6), working alone on `codex/mission-foundation`. **Status:** Local implementation and acceptance complete; full platform phases remain governed by their individual cards.
+
+The founder explicitly instructed implementation after the expanded concept review. [ADR-0009](adr/ADR-0009-first-mission-increment.md) records the bounded cross-phase scope, language and deployment choices, and differences from the future platform. This increment owns the new `apps/cockpit`, `services/core`, `services/mind`, `infra/docker/mission-db`, mission contracts, root build files, local Compose profile, acceptance script and supporting documentation. [MISSION_INCREMENT.md](MISSION_INCREMENT.md) records the tests and unresolved production/remote gates. A Git remote is not configured; no draft PR lock was published. No original phase is marked complete by this entry.

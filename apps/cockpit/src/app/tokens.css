@@ -1,0 +1,16 @@
+/* Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Fieldbook palette */
+/* Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification */
+:root {
+  --forest: #20372b;
+  --ink: #30412d;
+  --paper: #f1f2e9;
+  --white: #fbfcf6;
+  --cream: #eff0df;
+  --lime: #c4d59b;
+  --sage: #8ba275;
+  --orange: #bc7c42;
+  --muted: #6f7c61;
+  --line: #dce1d2;
+  --mono:
+    "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}

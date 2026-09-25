@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Vigil compliance validator: branch, hygiene, WORKLOG, append-only ledgers, attribution, PR title, phase claim (P0)
 # Modified by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — P0 review: PR-base rule, preserved attribution, accepted-ADR immutability, more file types
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Recognise Codex workspace branches
 """Vigil — Project Compliance Validator.
 
 Automates the checkable parts of INSTRUCTIONS.md and docs/BRANCHING_STRATEGY.md. It runs as a
@@ -41,9 +42,10 @@ import sys
 from pathlib import Path
 
 PROTECTED_BRANCHES = ("main", "develop", "master")
-VALID_PREFIXES = ("feature/", "bugfix/", "hotfix/", "release/", "fix/", "chore/")
+VALID_PREFIXES = ("feature/", "bugfix/", "hotfix/", "release/", "fix/", "chore/", "codex/")
 _SLUG = r"[a-z0-9]+(?:-[a-z0-9]+)*"  # lowercase kebab-case (BRANCHING_STRATEGY §1)
 BRANCH_PATTERNS: dict[str, tuple[re.Pattern[str], str]] = {
+    "codex/": (re.compile(rf"codex/{_SLUG}"), "codex/mission-foundation"),
     "feature/": (re.compile(rf"feature/P\d+-{_SLUG}"), "feature/P8-outbox-relay"),
     "bugfix/": (re.compile(rf"bugfix/P\d+-{_SLUG}"), "bugfix/P7-cursor-overflow"),
     "hotfix/": (re.compile(rf"hotfix/{_SLUG}"), "hotfix/cve-2027-1234"),
@@ -82,7 +84,7 @@ ADR_DIR = "docs/adr/"
 ADR_STATUS = re.compile(r"^\*\*Status:\*\*.*$", re.M)
 PR_BASE_PREFIXES = {
     "main": ("release/", "hotfix/"),
-    "develop": ("feature/", "bugfix/", "fix/", "chore/"),
+    "develop": ("feature/", "bugfix/", "fix/", "chore/", "codex/"),
 }
 ATTRIBUTION_NAMES = {"Dockerfile", "justfile"}
 LOCKFILES = {
@@ -227,7 +229,7 @@ def validate_active_branch(report: Report, *, ci: bool, base: str) -> str | None
     if prefix is None:
         report.error(
             f"Branch '{branch}' does not match naming convention (e.g. feature/P8-outbox-relay). "
-            "Use feature|bugfix/P<ID>-<slug>, hotfix|fix|chore/<slug> or release/v<X.Y.Z>."
+            "Use feature|bugfix/P<ID>-<slug>, hotfix|fix|chore|codex/<slug> or release/v<X.Y.Z>."
         )
         return branch
 
