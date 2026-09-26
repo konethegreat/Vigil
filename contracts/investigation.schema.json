@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vigil:investigation-command:v1",
+  "title": "Local synthetic investigation commands",
+  "description": "Schema checks shape. Core additionally enforces session scope, typed endpoint pairs, source visibility, capacity, mission state and versions.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "mission_id",
+        "expected_version",
+        "object_type",
+        "title",
+        "summary",
+        "evidence_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "create_object"
+        },
+        "mission_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "object_type": {
+          "enum": [
+            "PERSON",
+            "ORGANISATION",
+            "PLACE",
+            "ASSET",
+            "EVENT",
+            "DOCUMENT"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        },
+        "evidence_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "occurred_at": {
+          "type": ["string", "null"],
+          "maxLength": 50,
+          "description": "Optional for EVENT only. ISO timestamp with explicit offset, or null/empty for unknown."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "mission_id",
+        "expected_version",
+        "from_id",
+        "to_id",
+        "relation",
+        "evidence_id",
+        "assessment",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "create_link"
+        },
+        "mission_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "from_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "to_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "relation": {
+          "enum": [
+            "LOCATED_AT",
+            "INVOLVES",
+            "REPORTED_BY",
+            "SUPPLIED_BY",
+            "RELATED_TO",
+            "PRECEDES"
+          ]
+        },
+        "evidence_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "assessment": {
+          "enum": ["REPORTED", "CORROBORATED", "DISPUTED"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "mission_id",
+        "expected_version",
+        "link_id",
+        "expected_revision",
+        "assessment",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "review_link"
+        },
+        "mission_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "link_id": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 60
+        },
+        "expected_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "assessment": {
+          "enum": ["REPORTED", "CORROBORATED", "DISPUTED"]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 2000
+        }
+      }
+    }
+  ]
+}

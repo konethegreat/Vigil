@@ -1,5 +1,7 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Mandatory bounded demo policy
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Broader district operations
+// purpose
 // boundary
 package africa.vigil;
 
@@ -35,7 +37,7 @@ final class Policy {
                   "Operations coordinator",
                   "operations-demo",
                   "COORDINATOR",
-                  "SERVICE_RESTORATION"),
+                  "DISTRICT_OPERATIONS"),
           "protection",
               new Context(
                   "protection",

@@ -1,5 +1,6 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Authoritative API conventions, endpoint specifications (OMS, objects, actions, functions, datasets, policy, audit, Mind, ER, cases) and event catalogue (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation API append record -->
 
 # Vigil — API Design
 
@@ -891,3 +892,4 @@ Structured-mode example (debugging tap only):
 |---|---|---|---|
 | 2026-09-25 | P0 | Kone Tshivhinda (Claude Opus 5.5) | Added Part A conventions (headers, pagination, filter DSL, error format and catalogue, rate limits, redaction, idempotency, watermarks, versioning); OMS-01–05; OBJ-01–03; ACT-01–06; FN-01; DS-01–04; POL-01–03; AUD-01; MIND-01–03; ER-01–03; CASE-01–02; reserved B.11 IDs; events C.2 (11 types). Deprecated: none |
 | 2026-09-25 | Mission increment 01 (ADR-0009) | Kone Tshivhinda (OpenAI Codex GPT-6) | Added implemented local mission/session/audit/export/model-status routes documented in [MISSION_API.md](MISSION_API.md), with create/command payloads in `contracts/mission.schema.json`. These routes are a scoped synthetic increment, not implementation of the full catalogue above. Deprecated: none. |
+| 2026-09-26 | Investigation increment 02 (ADR-0010) | Kone Tshivhinda (OpenAI Codex GPT-6) | Added GET `/api/v1/investigations` and POST `/api/v1/investigations/commands`, forwarded by the Cockpit gateway. Typed source-backed objects, relationship assertions, revision history and scoped provenance; strict command contract in `contracts/investigation.schema.json`. Implemented semantics and limits in [MISSION_API.md](MISSION_API.md). Existing mission routes retained. Deprecated: none. |

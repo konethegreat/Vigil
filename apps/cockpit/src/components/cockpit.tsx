@@ -1,5 +1,6 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Mission workspace components
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Platform investigation navigation
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -52,7 +53,8 @@ import { Options } from "./options";
 import { EvidenceDetail } from "./evidence-detail";
 import { IntelligenceView } from "./intelligence";
 import { HistoryView } from "./history";
-type View = "desk" | "intelligence" | "activity";
+import { Investigations } from "./investigations";
+type View = "desk" | "investigations" | "intelligence" | "activity";
 type Modal =
   | { type: "create" }
   | { type: "source" }
@@ -70,7 +72,7 @@ export function Cockpit() {
   const [missions, setMissions] = useState<Mission[]>([]),
     [identity, setIdentity] = useState<Identity | null>(null),
     [selected, setSelected] = useState("VGL-0041");
-  const [view, setView] = useState<View>("desk"),
+  const [view, setView] = useState<View>("investigations"),
     [tab, setTab] = useState<Tab>("Situation"),
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("All missions");
@@ -84,6 +86,7 @@ export function Cockpit() {
     [auxError, setAuxError] = useState("");
   const search = useRef<HTMLInputElement>(null),
     pending = useRef<{ signature: string; key: string } | null>(null);
+  const loadSequence = useRef(0);
   const mission = missions.find((item) => item.id === selected) || missions[0];
   const write =
     !!identity && !identity.read_only && mission?.status !== "COMPLETED";
@@ -91,9 +94,11 @@ export function Cockpit() {
     !!mission?.plan &&
     mission.plan.evidence_version === mission.evidence_version;
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     const result = await api<{ identity: Identity; missions: Mission[] }>(
       "missions",
     );
+    if (sequence !== loadSequence.current) return;
     setIdentity(result.identity);
     setMissions(result.missions);
     setSelected((id) =>
@@ -150,18 +155,22 @@ export function Cockpit() {
   }, [view, mission]);
   async function switchWorkspace(actor: string) {
     if (busy) return;
+    // Invalidate an earlier refresh before clearing the previous workspace.
+    ++loadSequence.current;
     setBusy(true);
     setError("");
     setModal(null);
     setAudit(null);
     setIntelligence(null);
     setMissions([]);
+    setView("desk");
+    setIdentity(null);
     pending.current = null;
     try {
       await api("session", { actor });
       await load();
       setTab("Situation");
-      setView("desk");
+      setView("investigations");
       setQuery("");
       setFilter("All missions");
     } catch (e) {
@@ -236,15 +245,23 @@ export function Cockpit() {
           </span>
           vigil<span className="brand-period">.</span>
         </Link>
-        <div className="sidebar-caption">THE MISSION CONTINUES</div>
+        <div className="sidebar-caption">INTELLIGENCE INTO OPERATIONS</div>
         <div className="workspace-label">
           <span className="connection-dot" />
           <span>
             South Africa
-            <span className="small-block">FOUNDING WORKSPACE / 01</span>
+            <span className="small-block">CONNECTED WORKSPACE / 02</span>
           </span>
         </div>
         <nav aria-label="Primary navigation">
+          <button
+            className={
+              view === "investigations" ? "nav-item selected" : "nav-item"
+            }
+            onClick={() => setView("investigations")}
+          >
+            <GitBranch size={18} /> Investigations
+          </button>
           <button
             className={view === "desk" ? "nav-item selected" : "nav-item"}
             onClick={() => setView("desk")}
@@ -262,7 +279,7 @@ export function Cockpit() {
             onClick={() => setView("intelligence")}
           >
             <Waypoints size={18} />
-            Intelligence
+            AI operations
           </button>
           <button
             className={view === "activity" ? "nav-item selected" : "nav-item"}
@@ -273,11 +290,11 @@ export function Cockpit() {
           </button>
         </nav>
         <div className="sidebar-note">
-          <span className="eyebrow">ONE CONNECTED MISSION</span>
+          <span className="eyebrow">ONE CONNECTED PLATFORM</span>
           <p>
-            Understand what happened.
+            Trace the evidence.
             <br />
-            Decide what comes next.
+            Connect the operational picture.
             <br />
             <em>Stay until it is done.</em>
           </p>
@@ -305,6 +322,7 @@ export function Cockpit() {
         <label className="workspace-switch">
           <span>Demonstration workspace</span>
           <select
+            aria-label="Demonstration workspace"
             value={identity?.actor || "operations"}
             disabled={busy}
             onChange={(e) => switchWorkspace(e.target.value)}
@@ -316,7 +334,7 @@ export function Cockpit() {
         </label>
         <div className="sidebar-bottom">
           <span className="connection-dot" />
-          LOCAL ENVIRONMENT <span>v0.1</span>
+          LOCAL ENVIRONMENT <span>v0.2</span>
         </div>
       </aside>
       <div className="workspace">
@@ -327,9 +345,11 @@ export function Cockpit() {
             <strong>
               {view === "desk"
                 ? "Mission desk"
-                : view === "intelligence"
-                  ? "Intelligence"
-                  : "Decision history"}
+                : view === "investigations"
+                  ? "Investigations"
+                  : view === "intelligence"
+                    ? "AI operations"
+                    : "Decision history"}
             </strong>
           </div>
           <div className="topbar-right">
@@ -353,23 +373,29 @@ export function Cockpit() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                {identity?.actor === "protection"
-                  ? "CARE, WITH CONTINUITY"
-                  : "FROM SIGNAL TO OUTCOME"}
+                {view === "investigations"
+                  ? "VIGIL / INTELLIGENCE WORKSPACE"
+                  : identity?.actor === "protection"
+                    ? "CARE, WITH CONTINUITY"
+                    : "FROM SIGNAL TO OUTCOME"}
               </div>
               <h1>
                 {view === "desk"
                   ? "The mission desk."
-                  : view === "intelligence"
-                    ? "Intelligence, with evidence."
-                    : "Every decision leaves a trace."}
+                  : view === "investigations"
+                    ? "See the connections."
+                    : view === "intelligence"
+                      ? "Intelligence, with evidence."
+                      : "Every decision leaves a trace."}
               </h1>
               <p>
                 {view === "desk"
                   ? "A shared picture. A clear next step. A result that holds up."
-                  : view === "intelligence"
-                    ? "Specialist reasoning, bounded tools, and visible uncertainty."
-                    : "Follow the record from first signal to confirmed outcome."}
+                  : view === "investigations"
+                    ? "Evidence, entities, and events. Across the work that matters."
+                    : view === "intelligence"
+                      ? "Specialist reasoning, bounded tools, and visible uncertainty."
+                      : "Follow the record from first signal to confirmed outcome."}
               </p>
             </div>
             {view === "desk" && (
@@ -395,6 +421,25 @@ export function Cockpit() {
             <div className="loading">
               <Spinner /> Connecting to the mission services…
             </div>
+          ) : view === "investigations" && identity ? (
+            <Investigations
+              key={identity.actor}
+              identity={identity}
+              missions={missions}
+              onBusy={setBusy}
+              refreshMissions={load}
+              onMissionChange={(updated) =>
+                setMissions((items) => [
+                  updated,
+                  ...items.filter((item) => item.id !== updated.id),
+                ])
+              }
+              openMission={(id) => {
+                setSelected(id);
+                setTab("Evidence");
+                setView("desk");
+              }}
+            />
           ) : view === "intelligence" ? (
             <IntelligenceView intelligence={intelligence} error={auxError} />
           ) : view === "activity" ? (

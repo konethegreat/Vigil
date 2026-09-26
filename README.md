@@ -1,6 +1,7 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Repository README (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Working local mission system -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Connected investigation workspace -->
 
 # Vigil *(codename)*
 
@@ -11,7 +12,7 @@ Vigil turns fragmented operational data into a living model of real assets, peop
 > ⚠️ "Vigil" is an internal **codename** until trademark clearance ([ADR-0006](docs/adr/ADR-0006-codename-and-trademark-clearance.md)).
 
 ## Status
-**Mission increment 01: working local implementation.** The founder authorised the first complete evidence-to-outcome workflow after the concept review. A Java/PostgreSQL core, Python intelligence service and TypeScript cockpit now run together. Synthetic protection, infrastructure and response missions demonstrate the reusable mission primitives. The larger P0–P43 platform remains in development.
+**Investigation increment 02: connected local implementation.** A Java/PostgreSQL core, Python intelligence service and TypeScript cockpit run together. The investigation workspace connects typed, source-backed objects across missions, with relationship assessments, review history, event chronology and direct navigation into operational work. Synthetic infrastructure-crime and procurement inquiries demonstrate shared records across domains; protection, infrastructure and response retain the evidence-to-outcome mission workflow. The larger P0–P43 platform remains in development.
 
 ## Run Vigil
 
@@ -26,6 +27,8 @@ Open **http://127.0.0.1:3100**. The first build downloads dependencies; later st
 The workspace selector exposes three explicitly fictional identities: District operations, Protection services, and an operations reviewer with read-only access. These are demonstration identities, not a production login system. All handoff receipts are manually recorded; no emergency service is contacted.
 
 You can open a mission, preserve original source text, revise an assessment with its reason, generate an evidence-linked plan, record each handoff transition, confirm task results, record the outcome, and export the complete mission with its locally verifiable audit chain. Evidence revisions invalidate older plans. Concurrent changes and duplicate command retries are checked by the server.
+
+Start in **Investigations**. Select the infrastructure-components inquiry to follow stock, depot, access-event and delivery-document claims; the procurement inquiry reuses its supplier and document objects. Switch between Network, Timeline and Objects, inspect original sources, create cited objects, and record or review relationships. Evidence changes flag affected mission assertions for review. See [investigation acceptance](docs/INVESTIGATION_INCREMENT.md) and [ADR-0010](docs/adr/ADR-0010-investigation-workspace.md) for the bounded implementation and next platform work.
 
 The default planner uses a labelled deterministic checklist. Optional local Ollama reasoner and challenger models can be selected in `.env`; see [.env.example](.env.example). No hosted LLM or model download is invoked automatically. See the [runbook](docs/RUNNING_VIGIL.md), [acceptance record](docs/MISSION_INCREMENT.md), and [implementation decision](docs/adr/ADR-0009-first-mission-increment.md).
 

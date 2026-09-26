@@ -1,5 +1,6 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Browser-to-core security boundary
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation gateway coverage
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 vi.mock("server-only", () => ({}));
@@ -25,6 +26,45 @@ function request(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("cockpit gateway", () => {
+  it("forwards investigation reads and commands while denying nested arbitrary paths", async () => {
+    const fetcher = vi
+      .fn()
+      .mockImplementation(async () =>
+        Response.json({ objects: [], links: [] }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    expect(
+      (
+        await GET(
+          request("investigations", undefined, {
+            cookie: "vigil_demo_session=server-signed-token",
+          }),
+          context("investigations"),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await POST(
+          request(
+            "investigations/commands",
+            { type: "create_object" },
+            { cookie: "vigil_demo_session=server-signed-token" },
+          ),
+          context("investigations/commands"),
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await GET(
+          request("investigations/internal"),
+          context("investigations/internal"),
+        )
+      ).status,
+    ).toBe(404);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it("rejects cross-origin mutation before any upstream request", async () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);

@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Mission environment runbook -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation workflow and forward migration -->
 
 # Running Vigil locally
 
@@ -19,11 +20,15 @@ Open http://127.0.0.1:3100. Ports 3100, 8087, 8017 and 5547 must be free. Every 
 | Mind          | Python / FastAPI bounded analysis                                | http://127.0.0.1:8017/health        |
 | PostgreSQL 18 | Missions, original evidence, commands, audit and access receipts | 127.0.0.1:5547                      |
 
-The browser holds a signed demonstration session in an HttpOnly, SameSite Strict cookie. It never receives the internal service token. Core derives tenant and purpose from the signed identity, checks operation policy and scopes transactions through PostgreSQL row-level security. All five seed missions and all personas are fictional. The public local credentials in Compose are deliberately throwaway; this profile is for synthetic records.
+The browser holds a signed demonstration session in an HttpOnly, SameSite Strict cookie. It never receives the internal service token. Core derives tenant and purpose from the signed identity, checks operation policy and scopes transactions through PostgreSQL row-level security. All seven seed missions and all personas are fictional. The public local credentials in Compose are deliberately throwaway; this profile is for synthetic records.
 
 Use the workspace selector to explore District operations, Protection services, and Independent review. Independent review sees operations records but cannot mutate them. The protection workspace contains only its own missions.
 
 ## First mission journey
+
+The application opens in **Investigations**. Follow **Trace the missing infrastructure components.** through its shared stock, location, event, supplier and delivery-document records. Select **Reconcile the procurement and receiving record.** to see two of those objects reused with a separate procurement source. Network, Timeline and Objects share the same records. The inspector opens preserved source material and the originating operational mission. Add object and Add relationship require existing mission evidence; Review adds a new assessment receipt.
+
+To follow the original operational workflow, choose **Mission desk**:
 
 1. Open **Restore the corridor. Preserve the evidence.** in District operations.
 2. Inspect the Evidence register. The source clock and field report disagree; originals remain visible.
@@ -115,10 +120,12 @@ For an existing database created before the access-receipt migration was added, 
 Get-Content infra/docker/mission-db/access.sql -Raw | docker compose -f docker-compose.dev.yml exec -T db psql -U vigil_admin -d vigil -v ON_ERROR_STOP=1
 ```
 
-The access migration is idempotent. Future schema changes need forward migrations; the initial schema is not reapplied to an existing volume.
+Starting the complete system now runs the one-shot `migrate` service before Core. It applies `access.sql` and `investigation.sql` idempotently to the retained database; fresh databases also initialise these tables. No database reset is required. To inspect a migration failure, use `docker compose -f docker-compose.dev.yml logs migrate`. Core will not start through Compose until migration succeeds.
+
+Verify the new investigation workflow with `python scripts/verify-investigations.py`. It exercises the running browser gateway, Core and PostgreSQL using synthetic objects and assertions, including retries, source changes, review history, read-only access and tenant isolation. It leaves an explicitly named acceptance mission and its records for inspection. The existing Java check command also discovers the investigation integration suite. New browser projection tests run alongside gateway tests with `pnpm --dir apps/cockpit test`.
 
 ## Implementation boundaries and next work
 
 The first implementation has text-source intake, a fixed three-task mission template, manual acknowledgments, local models, and a compact PostgreSQL JSON read model. It has no production OIDC, granular field markings, Rust/WASM policy kernel, attachment ingestion/OCR, queue-based model jobs, external dispatch, offline field sync, federation, geospatial asset model, multilingual evaluation suite, or automatic resource allocation yet.
 
-The strongest next increment is configurable mission templates plus a provider-capacity and acknowledgment connector. Preserve the current transaction, source revision, scope, and outcome contracts as those capabilities arrive. Replace the demonstration identity boundary before introducing real personal records.
+The investigation registry adds immutable source-backed objects and reviewed assertions. Its graph is limited to 30 visible nodes; the complete local registry is capped at 500 objects and 1,000 assertions per workspace. It is not the full-scale ontology/search service. The next platform work includes controlled dataset ingestion, versioned object corrections, a combined investigation export, graph-aware model proposals, production identity and policy, and configurable mission/provider workflows. Preserve the current source, transaction and outcome contracts as those capabilities arrive.

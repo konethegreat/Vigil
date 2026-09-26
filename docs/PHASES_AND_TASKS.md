@@ -1,5 +1,6 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Master project plan: tiers, phases P0–P43, file ownership, conflict rules (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation increment scope and acceptance -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -1045,3 +1046,7 @@
 **Owner:** Kone Tshivhinda (OpenAI Codex GPT-6), working alone on `codex/mission-foundation`. **Status:** Local implementation and acceptance complete; full platform phases remain governed by their individual cards.
 
 The founder explicitly instructed implementation after the expanded concept review. [ADR-0009](adr/ADR-0009-first-mission-increment.md) records the bounded cross-phase scope, language and deployment choices, and differences from the future platform. This increment owns the new `apps/cockpit`, `services/core`, `services/mind`, `infra/docker/mission-db`, mission contracts, root build files, local Compose profile, acceptance script and supporting documentation. [MISSION_INCREMENT.md](MISSION_INCREMENT.md) records the tests and unresolved production/remote gates. A Git remote is not configured; no draft PR lock was published. No original phase is marked complete by this entry.
+
+## Founder-authorised investigation increment 02 — 2026-09-26
+
+**Status:** Local implementation and acceptance complete — Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** ADR-0010; new investigation core classes, SQL migration, Cockpit workspace, contracts, tests, fixtures and supporting documentation. Continues the authorised local increment on `codex/mission-foundation`; no full phase is marked complete. Results and remaining limits: [INVESTIGATION_INCREMENT.md](INVESTIGATION_INCREMENT.md).

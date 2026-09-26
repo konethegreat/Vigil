@@ -1,5 +1,6 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Server-side session and origin boundary
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Allow scoped investigation endpoints
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
@@ -9,7 +10,7 @@ const gateway =
   process.env.VIGIL_INTERNAL_TOKEN || "local-synthetic-mission-only";
 const cookieName = "vigil_demo_session";
 const allowed =
-  /^(missions(?:\/VGL-[A-Za-z0-9-]+(?:\/(commands|audit|export))?)?|session|intelligence\/status|health)$/;
+  /^(missions(?:\/VGL-[A-Za-z0-9-]+(?:\/(commands|audit|export))?)?|investigations(?:\/commands)?|session|intelligence\/status|health)$/;
 async function session(actor: string) {
   const response = await fetch(`${core}/session`, {
     method: "POST",

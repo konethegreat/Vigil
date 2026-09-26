@@ -1,6 +1,8 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Explicitly synthetic
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // operational fixtures
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation task semantics and
+// seed order
 package africa.vigil;
 
 import java.time.Instant;
@@ -10,9 +12,11 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(10)
 final class DemoFixtures implements ApplicationRunner {
   private final MissionRepository repository;
 
@@ -182,6 +186,13 @@ final class DemoFixtures implements ApplicationRunner {
                 ? "Verify the agreed support was delivered"
                 : "Verify restoration and record the outcome",
             protection ? "Case owner" : "Mission owner"));
+    if (domain.equals("INVESTIGATE") || domain.equals("INTEGRITY")) {
+      tasks.clear();
+      tasks.add(task("Preserve and reconcile the source material", "Evidence custodian"));
+      tasks.add(
+          task("Review relationship claims and alternative explanations", "Investigation analyst"));
+      tasks.add(task("Verify findings and document unresolved questions", "Case reviewer"));
+    }
     return Json.object(
         "id",
         id,
