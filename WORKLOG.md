@@ -5,6 +5,8 @@
 
 # Vigil — Work Log
 
+<!-- Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Source review delivery -->
+
 > **Append-only.** Add one row **before every commit** (INSTRUCTIONS.md §12). Never edit or delete existing rows. Newest rows go at the bottom.
 
 | Date | Engineer | AI Assistant | Branch | Description |
@@ -20,3 +22,4 @@
 | 2026-09-26 | Kone Tshivhinda | OpenAI Codex (GPT-6) | codex/mission-foundation | Founder requested a private personal GitHub repository and multiple traceable commits. Created konethegreatest/Vigil as private under the authenticated User account, configured origin, preserved the four existing milestone commits and added a repository/history guide plus a focused-commit requirement for future work. Publication retains the baseline and implementation branches, with no squashing or history rewrite. Verified tracked-file hygiene and checked reachable history for high-confidence credential patterns; no matches. |
 | 2026-09-26 | Kone Tshivhinda | OpenAI Codex (GPT-6) | codex/mission-foundation | Verified personal repository ownership, private visibility and published commits through the GitHub API; configured the working implementation as default, enabled merge commits, disabled squash/rebase merging, and set upstream tracking. Opened draft PR #1 into develop without merging. Recorded GitHub HTTP 403 requiring Pro for private-repository branch protection; repository stays private and enforced protection remains unavailable on the current account plan. |
 | 2026-09-27 | Kone Tshivhinda | OpenAI Codex (GPT-6) | codex/mission-foundation | Recorded founder-authorised source-to-investigation review increment, evaluated implementation options in ADR-0011, and defined source/proposal/review contracts and separate implementation commits. Confirmed clean/synced checkout and open draft PR #1. |
+| 2026-09-27 | Kone Tshivhinda | OpenAI Codex (GPT-6) | codex/mission-foundation | Implemented authenticated local-model source extraction with exact quotation and hash validation, typed relationship constraints, optional independent model concerns and explicit failure without fabricated proposals. Added ten extraction boundary tests; all 29 Python tests pass with 98% aggregate statement coverage. |

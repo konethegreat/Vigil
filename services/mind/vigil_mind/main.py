@@ -1,5 +1,6 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Internal-only intelligence API
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+# Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Source extraction
 import hmac
 import os
 from contextlib import asynccontextmanager
@@ -8,6 +9,7 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 
 from .contracts import PlanRequest
+from .extraction import ExtractRequest, extract
 from .planner import Planner
 
 
@@ -40,3 +42,14 @@ async def status(request: Request):
 @app.post("/v1/plan", dependencies=[Depends(authorize)])
 async def plan(body: PlanRequest, request: Request):
     return await request.app.state.planner.plan(body)
+
+
+@app.post("/v1/extract", dependencies=[Depends(authorize)])
+async def extract_source(body: ExtractRequest, request: Request):
+    try:
+        return await extract(request.app.state.planner, body)
+    except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Extraction was unavailable or failed source validation; no proposal was saved.",
+        ) from exc

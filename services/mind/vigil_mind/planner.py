@@ -1,5 +1,6 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Grounded analysis
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+# Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction output budget
 import html
 import json
 import os
@@ -102,7 +103,9 @@ class Planner:
             else "A deterministic mission checklist is available. No model analysis is claimed.",
         }
 
-    async def call_model(self, model: str, system: str, content: str, schema: dict) -> dict:
+    async def call_model(
+        self, model: str, system: str, content: str, schema: dict, *, output_tokens: int = 768
+    ) -> dict:
         response = await self.client.post(
             f"{self.url}/api/chat",
             json={
@@ -113,7 +116,7 @@ class Planner:
                     {"role": "system", "content": system},
                     {"role": "user", "content": content},
                 ],
-                "options": {"temperature": 0, "num_predict": 768},
+                "options": {"temperature": 0, "num_predict": output_tokens},
             },
             timeout=90,
         )
