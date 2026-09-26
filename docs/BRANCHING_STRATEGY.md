@@ -1,5 +1,6 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Branching, merge and release strategy (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Codex branch compatibility -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Founder-requested commit granularity -->
 
 # Vigil — Branching Strategy
 
@@ -92,3 +93,11 @@ hotfix/cve-2027-xxxx ──PR──▶ main ──tag v0.1.1 ──back-merge PR
 - Delete merged feature branches (the merge commit keeps the history).
 - **Stale claims:** a branch with no commits for 14 days, whose phase is still claimed, may be taken over through a 🔄 HANDOFF (Rule 9).
 - Never rewrite history on any shared branch.
+
+## 9. Focused commits (founder instruction, 26 September 2026)
+
+Substantial work must be delivered as multiple logical commits so that its progress is easy to inspect. Commit a coherent, working change with its relevant tests; separate independent changes instead of waiting for an entire multi-component increment to become one large commit. Use concrete Conventional Commit subjects that explain the resulting behavior.
+
+For example, document ingestion may have separate commits for its source contract and storage, validated extraction service, analyst review interface, and full-workflow acceptance documentation. Each commit should have a purpose that a reviewer can explain. Do not create empty commits, separate code from the tests necessary to trust it, or split a tightly coupled change into broken intermediate states simply to increase the count.
+
+Retain the original project history when publishing it. Do not squash existing commits or rewrite already-shared history. New PRs preserve their individual commits through the merge policy above. Add the required WORKLOG entry before each commit.

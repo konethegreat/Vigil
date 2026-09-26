@@ -2,10 +2,13 @@
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Working local mission system -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Connected investigation workspace -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Personal GitHub and commit history links -->
 
 # Vigil *(codename)*
 
 **Sovereign operational intelligence for Africa, built by Africans.**
+
+Private personal repository: **[konethegreatest/Vigil](https://github.com/konethegreatest/Vigil)** · [Commit history](https://github.com/konethegreatest/Vigil/commits/codex/mission-foundation) · [Repository guide](docs/GITHUB_REPOSITORY.md)
 
 Vigil turns fragmented operational data into a living model of real assets, people, places and events: an **Ontology**. Operators, analysts and AI agents act on that model through governed **Actions**, which **write back** into systems of record. It is constitutional by design, sovereign by default, and built to work when the network doesn't.
 
