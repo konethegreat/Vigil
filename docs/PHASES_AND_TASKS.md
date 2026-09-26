@@ -1050,3 +1050,7 @@ The founder explicitly instructed implementation after the expanded concept revi
 ## Founder-authorised investigation increment 02 — 2026-09-26
 
 **Status:** Local implementation and acceptance complete — Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** ADR-0010; new investigation core classes, SQL migration, Cockpit workspace, contracts, tests, fixtures and supporting documentation. Continues the authorised local increment on `codex/mission-foundation`; no full phase is marked complete. Results and remaining limits: [INVESTIGATION_INCREMENT.md](INVESTIGATION_INCREMENT.md).
+
+## Founder-authorised source review increment 03 — 2026-09-27
+
+**Status:** In progress — Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** ADR-0011 and contracts/EXTRACTION.md; Mind extraction, Core proposal persistence/review, Sources workspace, direct interface cleanup and acceptance. Existing cross-phase local increment and draft PR #1 continue; no full platform phase is marked complete.
