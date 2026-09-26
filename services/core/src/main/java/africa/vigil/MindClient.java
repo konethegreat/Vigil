@@ -3,6 +3,8 @@
 // to Mind
 package africa.vigil;
 
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Scoped extraction request
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -74,6 +76,24 @@ final class MindClient {
             mission.get("evidence_version"),
             "evidence",
             evidence));
+  }
+
+  Map<String, Object> extract(
+      Policy.Context context, Map<String, Object> mission, Map<String, Object> source) {
+    Policy.requireWrite(context);
+    return call(
+        "/v1/extract",
+        Json.object(
+            "mission_id",
+            mission.get("id"),
+            "evidence_id",
+            source.get("id"),
+            "evidence_version",
+            mission.get("evidence_version"),
+            "original",
+            source.get("original"),
+            "sha256",
+            source.get("sha256")));
   }
 
   private Map<String, Object> call(String path, Map<String, Object> body) {

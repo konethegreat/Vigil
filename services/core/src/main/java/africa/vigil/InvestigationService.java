@@ -2,6 +2,9 @@
 // commands
 package africa.vigil;
 
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Shared publication
+// transaction
+
 import static africa.vigil.MissionRules.text;
 
 import java.time.Instant;
@@ -68,7 +71,7 @@ final class InvestigationService {
         });
   }
 
-  private void graphLock(Policy.Context context) {
+  void graphLock(Policy.Context context) {
     db.queryForList(
         "select pg_advisory_xact_lock(hashtextextended(?,0))",
         context.tenant() + ":investigation-registry");
@@ -150,7 +153,7 @@ final class InvestigationService {
         });
   }
 
-  private String createObject(
+  String createObject(
       Policy.Context context, Map<String, Object> mission, Map<String, Object> request) {
     capacity("investigation_objects", 500);
     String type = text(request, "object_type", 3, 30);
@@ -185,7 +188,7 @@ final class InvestigationService {
     return id;
   }
 
-  private String createLink(
+  String createLink(
       Policy.Context context, Map<String, Object> mission, Map<String, Object> request) {
     capacity("investigation_links", 1000);
     var from = object(text(request, "from_id", 3, 60));

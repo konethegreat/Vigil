@@ -3,6 +3,8 @@
 // operations
 package africa.vigil;
 
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Preserve decoded source text
+
 import static africa.vigil.MissionRules.text;
 
 import java.time.Instant;
@@ -112,7 +114,7 @@ final class MissionService {
                       text(request, "source", 2, 160),
                       text(request, "kind", 3, 30),
                       text(request, "statement", 5, 2000),
-                      text(request, "original", 5, 16000),
+                      MissionRules.original(request),
                       "UNVERIFIED");
               source.put("observed_at", null);
               Problem.require(

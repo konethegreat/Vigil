@@ -3,6 +3,8 @@
 // auditable commands
 package africa.vigil;
 
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Export proposal receipts
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -77,6 +79,16 @@ class MissionRepository {
               true,
               "mission",
               mission,
+              "extractions",
+              db.query(
+                  "select body::text,decision::text from extraction_runs where mission_id=? order by created_at,id",
+                  (rs, row) -> {
+                    var run = Json.decode(rs.getString(1));
+                    run.put(
+                        "decision", rs.getString(2) == null ? null : Json.decode(rs.getString(2)));
+                    return run;
+                  },
+                  id),
               "audit",
               audit(context, id));
         });

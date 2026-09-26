@@ -2,6 +2,8 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 package africa.vigil;
 
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Preserve source whitespace
+
 import java.util.Map;
 import java.util.Set;
 
@@ -61,6 +63,20 @@ final class MissionRules {
         "VALIDATION_FAILED",
         key.replace('_', ' ') + " must contain " + min + "–" + max + " characters.");
     return result;
+  }
+
+  static String original(Map<String, Object> request) {
+    Object value = request.get("original");
+    Problem.require(
+        value instanceof String s
+            && s.length() >= 5
+            && s.length() <= 16000
+            && !s.isBlank()
+            && s.indexOf('\0') < 0,
+        400,
+        "VALIDATION_FAILED",
+        "Original text must contain 5–16000 characters without NUL bytes.");
+    return (String) value;
   }
 
   static void expectedVersion(Map<String, Object> mission, Map<String, Object> request) {
