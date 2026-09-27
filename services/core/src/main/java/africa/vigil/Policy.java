@@ -5,6 +5,9 @@
 // boundary
 package africa.vigil;
 
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Distinct synthetic agency
+// identities
+
 import java.util.List;
 import java.util.Map;
 
@@ -17,13 +20,15 @@ final class Policy {
           "name",
           name,
           "organisation",
-          tenant.equals("care-demo") ? "Protection services" : "District operations",
+          organisation(tenant),
           "role",
           role,
           "purpose",
           purpose,
           "read_only",
           role.equals("REVIEWER"),
+          "agency_id",
+          tenant,
           "synthetic",
           true);
     }
@@ -45,6 +50,27 @@ final class Policy {
                   "care-demo",
                   "PRACTITIONER",
                   "PROTECTION_SUPPORT"),
+          "gauteng",
+              new Context(
+                  "gauteng",
+                  "Gauteng duty coordinator",
+                  "gauteng-demo",
+                  "COORDINATOR",
+                  "INCIDENT_COORDINATION"),
+          "limpopo",
+              new Context(
+                  "limpopo",
+                  "Limpopo duty coordinator",
+                  "limpopo-demo",
+                  "COORDINATOR",
+                  "INCIDENT_COORDINATION"),
+          "agency-reviewer",
+              new Context(
+                  "agency-reviewer",
+                  "Gauteng case reviewer",
+                  "gauteng-demo",
+                  "REVIEWER",
+                  "MISSION_REVIEW"),
           "reviewer",
               new Context(
                   "reviewer",
@@ -52,6 +78,19 @@ final class Policy {
                   "operations-demo",
                   "REVIEWER",
                   "MISSION_REVIEW"));
+
+  static String organisation(String tenant) {
+    return switch (tenant) {
+      case "care-demo" -> "Protection services";
+      case "gauteng-demo" -> "Gauteng coordination · fictional";
+      case "limpopo-demo" -> "Limpopo coordination · fictional";
+      default -> "District operations";
+    };
+  }
+
+  static List<String> agencies() {
+    return List.of("gauteng-demo", "limpopo-demo");
+  }
 
   static Context identity(String actor) {
     Context context = IDENTITIES.get(actor);
