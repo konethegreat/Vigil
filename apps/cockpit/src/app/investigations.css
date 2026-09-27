@@ -1,0 +1,605 @@
+/* Written by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation workspace design */
+.investigation-workspace {
+  min-width: 0;
+}
+.investigation-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.6fr) repeat(4, 1fr);
+  border: 1px solid var(--line);
+  background: var(--white);
+  margin-bottom: 24px;
+}
+.investigation-summary > div {
+  padding: 20px;
+  border-right: 1px solid var(--line);
+}
+.investigation-summary > div:last-child {
+  border-right: 0;
+}
+.investigation-summary p {
+  max-width: 230px;
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.investigation-summary strong {
+  display: block;
+  font-size: 29px;
+  font-weight: 400;
+  letter-spacing: -1px;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.investigation-summary > div > span:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 11px;
+}
+.investigation-summary .attention strong {
+  color: #925529;
+}
+.investigation-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.investigation-toolbar > label:first-child {
+  flex: 1.3;
+  min-width: 200px;
+  max-width: 380px;
+}
+.investigation-toolbar > label > span {
+  display: block;
+  font: 10px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 7px;
+}
+.investigation-toolbar select,
+.investigation-viewbar select {
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  border-radius: 3px;
+  padding: 11px;
+  max-width: 100%;
+  width: 100%;
+}
+.object-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 170px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: 3px;
+}
+.object-search input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline-offset: 4px;
+}
+.investigation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 315px;
+  gap: 18px;
+  align-items: start;
+}
+.investigation-canvas {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--white);
+}
+.investigation-viewbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 15px;
+  border-bottom: 1px solid var(--line);
+}
+.investigation-viewbar > div {
+  display: flex;
+  gap: 2px;
+}
+.investigation-viewbar button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.investigation-viewbar button.active {
+  background: var(--forest);
+  color: var(--white);
+}
+.investigation-viewbar select {
+  width: auto;
+  max-width: 160px;
+  padding: 8px;
+  font-size: 11px;
+}
+.network-context {
+  padding: 13px 17px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  background: #20382e;
+  color: #d6e2cc;
+  font-size: 10px;
+}
+.network-context > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.network-context label {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.network-context input {
+  accent-color: var(--lime);
+}
+.network-scroll {
+  overflow-x: auto;
+  background: #1b3028;
+}
+.investigation-network {
+  display: block;
+  width: 100%;
+  min-width: 600px;
+}
+.network-edge line {
+  stroke: #8c9c8c;
+  stroke-width: 1.4;
+  stroke-dasharray: 5 5;
+  opacity: 0.8;
+}
+.network-edge.corroborated line {
+  stroke: #b6c89a;
+  stroke-dasharray: none;
+}
+.network-edge.disputed line,
+.network-edge.stale line {
+  stroke: #d89a62;
+  stroke-width: 2;
+  stroke-dasharray: 4 5;
+}
+.network-node {
+  cursor: pointer;
+  outline: none;
+}
+.network-node rect {
+  fill: #294338;
+  stroke: #627f6c;
+  stroke-width: 1;
+  transition:
+    stroke 0.15s,
+    fill 0.15s;
+}
+.network-node.selected rect,
+.network-node:focus rect {
+  fill: #e7ebd7;
+  stroke: #cfdbb0;
+  stroke-width: 2;
+}
+.network-node:hover rect {
+  stroke: #d9e5c4;
+  stroke-width: 2;
+}
+.network-node text {
+  fill: #f1f4e6;
+  font:
+    13px Arial,
+    sans-serif;
+}
+.network-node .network-node-type {
+  fill: #b2c9a5;
+  font: 9px var(--mono);
+  letter-spacing: 1.4px;
+}
+.network-node .network-node-source {
+  fill: #adc0ae;
+  font: 8px var(--mono);
+  letter-spacing: 1px;
+}
+.network-node.selected text,
+.network-node:focus text {
+  fill: #263e2e;
+}
+.network-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 16px 20px 3px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.network-legend span {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.network-legend i {
+  width: 22px;
+  border-top: 1px dashed #72826c;
+}
+.network-legend i.corroborated {
+  border-top-style: solid;
+}
+.network-legend i.disputed {
+  border-top-color: #a56433;
+  border-top-width: 2px;
+}
+.network-note {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 20px 15px;
+  line-height: 1.65;
+  max-width: 660px;
+}
+.investigation-canvas-footer {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  padding: 14px 18px;
+  font-size: 10px;
+}
+.object-inspector {
+  min-width: 0;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 23px;
+  max-height: 1100px;
+  overflow-y: auto;
+}
+.inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.object-type {
+  font: 9px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: #eef1e6;
+  padding: 5px 7px;
+  border: 1px solid #dce1d2;
+  border-radius: 2px;
+  display: inline-block;
+}
+.type-event {
+  color: #79522f;
+  background: #f4eddf;
+  border-color: #e7d8bf;
+}
+.type-organisation {
+  color: #405771;
+  background: #edf0f1;
+  border-color: #d3dce2;
+}
+.type-document {
+  color: #64516e;
+  background: #f1eef3;
+  border-color: #e3dce7;
+}
+.object-inspector h2 {
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+  margin: 20px 0 12px;
+}
+.object-description {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.object-id {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 9px;
+  color: var(--muted);
+  padding: 10px 0 19px;
+}
+.inspector-source,
+.inspector-mission {
+  border-top: 1px solid var(--line);
+  padding: 19px 0;
+}
+.inspector-source button {
+  display: flex;
+  text-align: left;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  width: 100%;
+}
+.inspector-source button > span {
+  flex: 1;
+  font-size: 12px;
+}
+.inspector-source small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 10px;
+}
+.inspector-mission p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.inspector-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inspector-section-heading h3 {
+  font-size: 14px;
+  font-weight: 400;
+}
+.inspector-section-heading h3 span {
+  color: var(--muted);
+  margin-left: 8px;
+}
+.inspector-relations > .muted {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.relationship-card {
+  border: 1px solid var(--line);
+  padding: 14px;
+  border-radius: 4px;
+  margin: 12px 0;
+}
+.relationship-card > div:first-child {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.relationship-card p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.relationship-card .relationship-direction {
+  color: var(--ink);
+  font-size: 12px;
+}
+.relationship-direction b {
+  display: block;
+  color: #8a623e;
+  font-size: 10px;
+  font-weight: 400;
+  margin: 3px 0;
+}
+.relationship-card .source-reference {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  text-align: left;
+}
+.relationship-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 13px;
+}
+.relationship-actions .text-button {
+  font-size: 10px;
+}
+.relationship-card details {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.relationship-card summary {
+  cursor: pointer;
+  font-size: 10px;
+  color: var(--muted);
+}
+.assertion-history {
+  margin-top: 12px;
+  font-size: 10px;
+}
+.assertion-history small {
+  color: var(--muted);
+}
+.review-needed {
+  color: #91552a;
+  font: 9px var(--mono);
+}
+.investigation-timeline {
+  padding: 25px;
+}
+.timeline-intro {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.timeline-intro p {
+  margin: 0;
+  font-size: 11px;
+  max-width: 440px;
+}
+.timeline-intro svg {
+  flex-shrink: 0;
+}
+.timeline-record {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 20px;
+  width: 100%;
+  text-align: left;
+  padding: 20px 10px;
+  border-left: 2px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.timeline-record.selected {
+  border-left-color: #986138;
+  background: #f1f3e9;
+}
+.timeline-record time {
+  color: var(--muted);
+  font: 10px var(--mono);
+  line-height: 1.8;
+}
+.timeline-record strong {
+  font-weight: 400;
+  font-size: 15px;
+}
+.timeline-record p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.timeline-record div > span {
+  font-size: 10px;
+  color: #6c785d;
+}
+.investigation-object-list {
+  padding: 8px 15px;
+}
+.investigation-object-list > button {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr) 85px 16px;
+  gap: 15px;
+  align-items: center;
+  width: 100%;
+  padding: 20px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.investigation-object-list > button.selected {
+  background: #f0f3e8;
+}
+.investigation-object-list strong {
+  font-weight: 400;
+  font-size: 14px;
+}
+.investigation-object-list p {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+  margin: 5px 0 0;
+}
+.investigation-object-list > button > span:nth-last-child(2) {
+  font-size: 10px;
+  color: var(--muted);
+}
+@media (max-width: 1250px) {
+  .investigation-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .investigation-summary > div:first-child {
+    grid-column: 1/-1;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 16px 20px;
+  }
+  .investigation-summary p {
+    max-width: none;
+  }
+  .investigation-layout {
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  .object-inspector {
+    padding: 18px;
+  }
+}
+@media (max-width: 1050px) {
+  .investigation-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .object-inspector {
+    max-height: none;
+  }
+  .inspector-relations {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .inspector-section-heading,
+  .inspector-relations > .muted {
+    grid-column: 1/-1;
+  }
+  .relationship-card {
+    margin: 0;
+  }
+}
+@media (max-width: 600px) {
+  .investigation-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .investigation-summary > div {
+    padding: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .investigation-summary strong {
+    font-size: 24px;
+  }
+  .investigation-toolbar > label:first-child {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .investigation-toolbar > .button {
+    flex: 1;
+    justify-content: center;
+  }
+  .object-search {
+    flex-basis: 100%;
+  }
+  .investigation-viewbar {
+    flex-wrap: wrap;
+  }
+  .investigation-viewbar select {
+    max-width: none;
+    flex: 1;
+  }
+  .investigation-network {
+    min-width: 600px;
+  }
+  .network-context {
+    font-size: 10px;
+  }
+  .investigation-timeline {
+    padding: 15px;
+  }
+  .timeline-record {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .inspector-relations {
+    grid-template-columns: 1fr;
+  }
+  .investigation-object-list > button {
+    grid-template-columns: 1fr 16px;
+    gap: 10px;
+  }
+  .investigation-object-list > button > .object-type {
+    grid-column: 1/-1;
+    width: fit-content;
+  }
+  .investigation-object-list > button > div {
+    grid-column: 1/-1;
+  }
+}

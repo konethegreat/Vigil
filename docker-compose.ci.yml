@@ -1,0 +1,141 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Local Docker CI harness: Postgres 18 (PostGIS + pgvector), Valkey and polyglot runners mirroring the GitHub workflows (P0)
+#
+# Skill §4.2. Usage:
+#   docker compose -f docker-compose.ci.yml run --rm ci-backend    # every backend language present
+#   docker compose -f docker-compose.ci.yml run --rm ci-frontend   # apps/cockpit
+#   docker compose -f docker-compose.ci.yml run --rm ci-python     # one language on its official image
+#   docker compose -f docker-compose.ci.yml down -v                # clean up (also: just ci-clean)
+# Runners exit non-zero on any failed gate and skip languages whose projects do not exist yet.
+# Toolchain outputs (.venv, Rust target/, node_modules) stay inside the containers, so a macOS or
+# Windows checkout never receives Linux binaries.
+name: vigil-ci
+
+x-test-env: &test-env
+  # Throwaway credentials for a tmpfs-only test database; never real data (INSTRUCTIONS §9.2).
+  DATABASE_URL: postgresql://vigil_test:vigil_test_password@test-postgres:5432/vigil_test
+  VALKEY_URL: redis://test-valkey:6379/0
+  ENVIRONMENT: test
+  CI: "true"
+  UV_PROJECT_ENVIRONMENT: /tmp/vigil-ci/venv
+  UV_LINK_MODE: copy
+  CARGO_TARGET_DIR: /tmp/vigil-ci/cargo-target
+  COVERAGE_FILE: /tmp/vigil-ci/coverage
+  RUFF_CACHE_DIR: /tmp/vigil-ci/ruff-cache
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTEST_ADDOPTS: -p no:cacheprovider
+  GOLANGCI_LINT_VERSION: v2.14.0
+  # The checkout is bind-mounted and owned by the host user: let git inside the container trust it.
+  GIT_CONFIG_COUNT: "1"
+  GIT_CONFIG_KEY_0: safe.directory
+  GIT_CONFIG_VALUE_0: /workspace
+
+x-backend-runner: &backend-runner
+  working_dir: /workspace
+  environment: *test-env
+  security_opt: ["no-new-privileges:true"] # runners execute third-party build code
+  depends_on:
+    test-postgres:
+      condition: service_healthy
+    test-valkey:
+      condition: service_healthy
+
+services:
+  test-postgres:
+    build:
+      context: infra/docker/postgres
+    image: vigil-ci/postgres:18
+    pull_policy: build
+    environment:
+      POSTGRES_USER: vigil_test
+      POSTGRES_PASSWORD: vigil_test_password
+      POSTGRES_DB: vigil_test
+    tmpfs:
+      - /var/lib/postgresql # PG18 layout (PGDATA=/var/lib/postgresql/18/docker); data never hits disk
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U vigil_test -d vigil_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  test-valkey:
+    image: valkey/valkey:9.1-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # Every present backend language on the multi-toolchain image (runs as uid 1000).
+  ci-backend:
+    <<: *backend-runner
+    build:
+      context: .
+      dockerfile: infra/docker/ci/Dockerfile
+    image: vigil-ci/toolchain:local
+    pull_policy: build
+    volumes:
+      - .:/workspace
+      - ci-cache:/home/ci/.cache
+      - ci-gradle:/home/ci/.gradle
+      - ci-cargo-registry:/usr/local/cargo/registry
+      - ci-go-mod:/go/pkg/mod
+    command: ["bash", "scripts/ci/run-backend.sh"]
+
+  ci-frontend:
+    image: node:24.21.0-trixie-slim
+    working_dir: /workspace
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      CI: "true"
+      PNPM_VERSION: "12.6.0"
+      npm_config_store_dir: /root/.cache/pnpm-store
+    volumes:
+      - .:/workspace
+      - ci-node-cache:/root/.cache
+      - /workspace/node_modules # container-only node_modules (native binaries stay Linux-side)
+      - /workspace/apps/cockpit/node_modules
+    command: ["bash", "scripts/ci/run-frontend.sh"]
+
+  # Optional single-language runners on official images: faster to start than building ci-backend.
+  ci-python:
+    <<: *backend-runner
+    image: ghcr.io/astral-sh/uv:0.12.18-python3.13-trixie-slim
+    profiles: [per-language]
+    volumes:
+      - .:/workspace
+    command: ["bash", "scripts/ci/run-backend.sh", "python"]
+
+  ci-java:
+    <<: *backend-runner
+    image: eclipse-temurin:25-jdk-noble
+    profiles: [per-language]
+    volumes:
+      - .:/workspace
+    command: ["bash", "scripts/ci/run-backend.sh", "java"]
+
+  ci-rust:
+    <<: *backend-runner
+    image: rust:1-trixie
+    profiles: [per-language]
+    volumes:
+      - .:/workspace
+    command: ["bash", "scripts/ci/run-backend.sh", "rust"]
+
+  ci-go:
+    <<: *backend-runner
+    image: golang:1.27.1-trixie
+    profiles: [per-language]
+    volumes:
+      - .:/workspace
+    command: ["bash", "scripts/ci/run-backend.sh", "go"]
+
+volumes:
+  ci-cache:
+  ci-gradle:
+  ci-cargo-registry:
+  ci-go-mod:
+  ci-node-cache:

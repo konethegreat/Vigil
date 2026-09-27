@@ -1,0 +1,28 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — ADR-0003 amber-licence allow-list read by sbom-license-scan.yml (P0)
+#
+# What this file is
+#   The licence gate in .github/workflows/sbom-license-scan.yml classifies every package in the
+#   Syft SBOM against ADR-0003 (docs/adr/ADR-0003-open-source-licence-policy.md):
+#     🟢 green  Apache-2.0, MIT, BSD, ISC, PostgreSQL, Zlib, … ........ always allowed
+#     🟡 amber  GPL, AGPL, LGPL, CC-BY-SA, ODbL, OpenRAIL, Llama ....... FAIL unless listed below
+#     🔴 red    BUSL (Business Source), SSPL, Elastic-2.0 (ELv2), FSL,
+#               Commons Clause, CC-BY-NC ................................ always FAIL (not listable here)
+#   Note: SPDX "BSL-1.0" is the permissive Boost licence (green); the Business Source Licence is "BUSL-1.1".
+#   Dual licences are judged by the best option (OR) and the worst obligation (AND).
+#
+# Before adding an entry (ADR-0003)
+#   1. Architecture review plus an ADR note recording the decision.
+#   2. The component runs only as an UNMODIFIED, SEPARATE service or process.
+#   3. It is NEVER in the edge agent, SDKs, the mobile app or Warden. The SBOM cannot attribute
+#      workspace-lockfile entries to one service, so reviewers enforce this rule, not the gate.
+#   4. ODbL data stays in separate databases.
+#   A red licence needs a purchased commercial licence and a superseding ADR, not an entry here.
+#
+# Entry format (`package` must equal the SBOM package name; the other fields are the audit trail):
+#   - package: ghostscript
+#     licence: AGPL-3.0-only
+#     adr: ADR-0012
+#     scope: services/mind/docai (unmodified separate process)
+#     approved_by: <Name> (<AI model>)
+#     review_by: 2027-03-31   # ADR-0003: top dependencies are re-reviewed every six months
+allowlist: []

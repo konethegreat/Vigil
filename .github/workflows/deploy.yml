@@ -1,0 +1,215 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Main-branch delivery: build existing images, push/sign/attest when configured, Relay dev-channel manifest placeholder, OpenTofu for non-sovereign dev only (P0)
+#
+# Skill §3 deploy, adapted to ARCHITECTURE §7 and ADR-0004. This workflow NEVER pushes to sovereign
+# sites: sovereign DCs, on-prem and air-gapped spokes PULL signed releases through Relay (hub/spoke,
+# channels dev → canary → stable → lts; P20–P21). It runs only after e2e-live succeeds for a push to
+# main (workflow_run), against exactly the commit e2e-live tested (RELEASE_SHA), and then only:
+#   1. builds each services/**/Dockerfile and apps/*/Dockerfile that exists (15 min cap, skill §4.3);
+#   2. pushes to the build registry, cosign-signs and attaches a Syft SBOM attestation, only when
+#      the registry is configured; otherwise it builds without pushing;
+#   3. publishes a Relay release manifest for the `dev` channel (a placeholder artifact until P20);
+#   4. runs OpenTofu plan/apply for the non-sovereign `dev` environment behind the approval of the
+#      GitHub Environment `dev`, and only after an admin opts in.
+#
+# Configuration (placeholders until P1 task 1.5 and P20):
+#   vars.REGISTRY, vars.IMAGE_NAMESPACE (default vigil)    build registry host and namespace
+#   secrets.REGISTRY_USERNAME, secrets.REGISTRY_PASSWORD   registry credentials
+#   secrets.COSIGN_PRIVATE_KEY, secrets.COSIGN_PASSWORD    key-based signing: Kyverno verifies offline,
+#                                                          nothing goes to a public transparency log
+#   vars.TOFU_DEV_ENABLED = "true"                         set only once `dev` has required reviewers
+name: deploy
+
+on:
+  workflow_run:
+    workflows: [e2e-live]
+    types: [completed]
+    branches: [main]
+
+env:
+  RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false # never interrupt a delivery half-way
+
+jobs:
+  discover:
+    name: discover images
+    # Deploy only what e2e-live proved: a successful run for a push to main.
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      images: ${{ steps.find.outputs.images }}
+      tofu_dev: ${{ steps.find.outputs.tofu_dev }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+      - name: Find Dockerfiles and the dev OpenTofu root
+        id: find
+        run: |
+          # services/core/Dockerfile → core; services/mind/gateway/Dockerfile → mind-gateway
+          images="$(git ls-files -- 'services/*/Dockerfile' 'apps/*/Dockerfile' \
+              ':(exclude)*/testdata/*' ':(exclude)*/tests/*' \
+            | jq -R -s -c 'split("\n") | map(select(length > 0) | rtrimstr("/Dockerfile"))
+                | map({context: ., name: (split("/")[1:] | join("-"))})')"
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          echo "Images to build: $images"
+          if git ls-files -- 'deploy/opentofu/environments/dev/*.tf' | grep -q .; then
+            echo "tofu_dev=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tofu_dev=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    name: build ${{ matrix.image.name }}
+    needs: discover
+    if: needs.discover.outputs.images != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # skill §4.3: Docker image builds ≤ 15 min
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.discover.outputs.images) }}
+    env:
+      PUSH: ${{ vars.REGISTRY != '' && secrets.REGISTRY_USERNAME != '' }}
+      SIGN: ${{ vars.REGISTRY != '' && secrets.REGISTRY_USERNAME != '' && secrets.COSIGN_PRIVATE_KEY != '' }}
+      IMAGE: ${{ vars.REGISTRY || 'local' }}/${{ vars.IMAGE_NAMESPACE || 'vigil' }}/${{ matrix.image.name }}
+      NAME: ${{ matrix.image.name }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Log in to the build registry
+        if: env.PUSH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build (and push when the registry is configured)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: ${{ matrix.image.context }}
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ env.IMAGE }}:${{ env.RELEASE_SHA }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
+
+      - name: Registry not configured
+        if: env.PUSH != 'true'
+        run: echo "::notice::Registry not configured, so $NAME was built but not pushed, signed or attested."
+
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+        if: env.SIGN == 'true'
+        with:
+          cosign-release: v2.5.2
+
+      - name: Sign the image (cosign, key-based, no public transparency log)
+        if: env.SIGN == 'true'
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes --key env://COSIGN_PRIVATE_KEY --tlog-upload=false "${IMAGE}@${DIGEST}"
+
+      - name: Syft SBOM of the pushed image
+        if: env.PUSH == 'true'
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.image.name }}.spdx.json
+          artifact-name: sbom-${{ matrix.image.name }}.spdx.json
+
+      - name: Attach the SBOM as a signed attestation (cosign)
+        if: env.SIGN == 'true'
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign attest --yes --key env://COSIGN_PRIVATE_KEY --tlog-upload=false \
+            --type spdxjson --predicate "sbom-${NAME}.spdx.json" "${IMAGE}@${DIGEST}"
+
+      - name: Record the image for the Relay manifest
+        if: env.PUSH == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          jq -n --arg name "$NAME" --arg image "$IMAGE" --arg digest "$DIGEST" --arg signed "$SIGN" \
+            '{name: $name, image: $image, digest: $digest, signed: ($signed == "true")}' > "image-${NAME}.json"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: env.PUSH == 'true'
+        with:
+          name: image-${{ matrix.image.name }}
+          path: image-${{ matrix.image.name }}.json
+          retention-days: 30
+
+  relay-manifest:
+    name: relay manifest (dev channel)
+    needs: build
+    if: needs.build.result == 'success' && vars.REGISTRY != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: image-*
+          merge-multiple: true
+          path: images
+      - name: Assemble the Relay release manifest (placeholder schema until P20)
+        run: |
+          jq -s --arg commit "$RELEASE_SHA" --arg repo "$GITHUB_REPOSITORY" \
+            --arg created "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{apiVersion: "relay.vigil/v0alpha1", kind: "Release", channel: "dev", created: $created,
+              source: {repository: $repo, commit: $commit}, products: .}' images/*.json > relay-release-dev.json
+          cat relay-release-dev.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: relay-release-dev
+          path: relay-release-dev.json
+      - name: Delivery model reminder
+        run: echo "::notice::Relay dev-channel manifest published as an artifact (placeholder until P20). Sites pull through Relay; this workflow pushes nothing to sovereign environments."
+
+  tofu-dev:
+    name: opentofu (dev, non-sovereign)
+    needs: discover
+    if: needs.discover.outputs.tofu_dev == 'true' && vars.TOFU_DEV_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: dev # the Environment's required reviewers are the approval gate
+    permissions:
+      contents: read
+      id-token: write # OIDC federation to the dev cloud account; no long-lived keys
+    defaults:
+      run:
+        working-directory: deploy/opentofu/environments/dev
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          persist-credentials: false
+      - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2
+        with:
+          tofu_version: 1.12.6
+          tofu_wrapper: false
+      - name: tofu init
+        run: tofu init -input=false
+      - name: tofu plan
+        run: tofu plan -input=false -out=tfplan
+      - name: tofu apply (the plan above)
+        run: tofu apply -input=false tfplan

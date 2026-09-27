@@ -1,0 +1,15 @@
+# Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Exclude local state from images
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+.git
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+.gradle
+build
+tmp
+.tmp
+.env*
+docs/engineers
+**/test-results
+**/playwright-report

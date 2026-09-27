@@ -1,0 +1,365 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Polyglot backend CI: path-filtered Python, Java, Rust, Go, Kotlin/Android, Elixir and Protobuf gates that no-op until each project exists (P0)
+#
+# Skill §3 ci-backend, generalised to the ADR-0001 language charter. A language job runs only when
+# (a) its paths changed and (b) its project entrypoint exists, so the workflow stays green and
+# cheap while the repository has no service code (AI_COMMUNICATION MSG-003).
+# Required status check: the `ci-backend` gate job (a skipped job would otherwise count as passing).
+# Local mirror: `just ci-backend` → scripts/ci/run-backend.sh. Bump versions together with
+# infra/docker/ci/Dockerfile.
+name: ci-backend
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-backend-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  PYTHON_VERSION: "3.13"
+  JAVA_VERSION: "25"
+  ANDROID_JAVA_VERSION: "21" # LTS supported by the Android Gradle Plugin; P27 may raise it
+  GO_VERSION: "1.27.1"
+  GOLANGCI_LINT_VERSION: "v2.14.0"
+  OTP_VERSION: "28"
+  ELIXIR_VERSION: "1.19"
+  BUF_VERSION: "1.73.0"
+
+jobs:
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read # dorny/paths-filter lists PR files through the API
+    outputs:
+      python: ${{ steps.decide.outputs.python }}
+      java: ${{ steps.decide.outputs.java }}
+      rust: ${{ steps.decide.outputs.rust }}
+      go: ${{ steps.decide.outputs.go }}
+      android: ${{ steps.decide.outputs.android }}
+      elixir: ${{ steps.decide.outputs.elixir }}
+      proto: ${{ steps.decide.outputs.proto }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Which paths changed?
+        id: filter
+        if: ${{ !env.ACT }} # under `act` every present project is checked
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          base: ${{ github.ref_name }} # push: compare with the commit before the push
+          filters: |
+            python:
+              - '**/*.py'
+              - '**/pyproject.toml'
+              - 'uv.lock'
+              - '.python-version'
+              - '.github/workflows/ci-backend.yml'
+            java:
+              - '**/*.java'
+              - '**/*.gradle.kts'
+              - '**/gradle.lockfile'
+              - 'gradle/**'
+              - 'gradlew'
+              - 'gradle.properties'
+              - 'services/core/**'
+              - 'services/forge-datasets/**'
+              - 'services/forge-connectors/**'
+              - 'packs/**'
+              - '.github/workflows/ci-backend.yml'
+            rust:
+              - '**/*.rs'
+              - '**/Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - '.github/workflows/ci-backend.yml'
+            go:
+              - '**/*.go'
+              - '**/go.mod'
+              - '**/go.sum'
+              - 'go.work'
+              - 'go.work.sum'
+              - '.golangci.yml'
+              - '.github/workflows/ci-backend.yml'
+            android:
+              - 'edge/field-app/**'
+              - '.github/workflows/ci-backend.yml'
+            elixir:
+              - 'services/comms/**'
+              - '.github/workflows/ci-backend.yml'
+            proto:
+              - 'proto/**'
+              - '.github/workflows/ci-backend.yml'
+
+      - name: Decide which language gates run (changed AND project present)
+        id: decide
+        env:
+          F_PYTHON: ${{ steps.filter.outputs.python }}
+          F_JAVA: ${{ steps.filter.outputs.java }}
+          F_RUST: ${{ steps.filter.outputs.rust }}
+          F_GO: ${{ steps.filter.outputs.go }}
+          F_ANDROID: ${{ steps.filter.outputs.android }}
+          F_ELIXIR: ${{ steps.filter.outputs.elixir }}
+          F_PROTO: ${{ steps.filter.outputs.proto }}
+        run: |
+          # decide NAME CHANGED TEST... (an empty CHANGED means the filter was skipped: treat as changed)
+          decide() {
+            local name="$1" changed="${2:-true}" run=false
+            shift 2
+            if [ "$changed" = "true" ] && "$@"; then run=true; fi
+            echo "$name=$run" >> "$GITHUB_OUTPUT"
+            echo "$name: changed=$changed run=$run"
+          }
+          has_go_module() { git ls-files -- 'go.mod' '*/go.mod' | grep -q .; }
+          decide python  "$F_PYTHON"  test -f pyproject.toml
+          decide java    "$F_JAVA"    test -f gradlew
+          decide rust    "$F_RUST"    test -f Cargo.toml
+          decide go      "$F_GO"      has_go_module
+          decide android "$F_ANDROID" test -f edge/field-app/gradlew
+          decide elixir  "$F_ELIXIR"  test -f services/comms/mix.exs
+          decide proto   "$F_PROTO"   test -f proto/buf.yaml
+
+  python:
+    name: python
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: OS packages for geo / PDF stacks (GDAL, PROJ, GEOS, Pango), only when those services exist
+        if: hashFiles('services/eo/**', 'services/sim/**', 'services/mind/docai/**') != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gdal-bin libgdal-dev libproj-dev proj-bin libgeos-dev \
+            libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0
+
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: uv sync (locked; lockfiles are committed, INSTRUCTIONS §6.5)
+        run: uv sync --locked --all-packages
+
+      - name: ruff check
+        timeout-minutes: 3
+        run: uv run ruff check .
+
+      - name: ruff format --check
+        timeout-minutes: 3
+        run: uv run ruff format --check .
+
+      - name: pytest (coverage ≥ 85 %)
+        timeout-minutes: 3
+        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=85
+
+      - name: 100 % coverage for connector and policy modules (skill §3)
+        timeout-minutes: 3
+        run: |
+          if git ls-files -- '*/connectors/*.py' '*/policy/*.py' | grep -q .; then
+            uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100
+          else
+            echo "No Python connectors/ or policy/ modules yet: gate not applicable."
+          fi
+
+  java:
+    name: java
+    needs: changes
+    if: needs.changes.outputs.java == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5; also validates the committed Gradle wrapper
+      - name: Gradle spotlessCheck · check · test
+        timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: ./gradlew --no-daemon spotlessCheck check test
+
+  rust:
+    name: rust
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable # explicit, because a SHA pin cannot name the toolchain
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - name: cargo fmt --check
+        timeout-minutes: 3
+        run: cargo fmt --all --check
+      - name: cargo clippy (warnings are errors)
+        timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: cargo test
+        timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: cargo test --workspace --locked
+
+  go:
+    name: go
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: "**/go.sum"
+      - name: gofmt (no unformatted files)
+        timeout-minutes: 3
+        run: |
+          unformatted="$(git ls-files -z -- '*.go' ':(exclude)vendor/*' ':(exclude)*/vendor/*' | xargs -0 -r gofmt -l)"
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt -w needed for:"
+            echo "$unformatted"
+            exit 1
+          fi
+      - name: Install golangci-lint (built with the pinned Go)
+        run: go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}"
+      - name: golangci-lint (every module)
+        timeout-minutes: 3
+        run: |
+          status=0
+          while IFS= read -r mod; do
+            dir="$(dirname "$mod")"
+            echo "::group::golangci-lint $dir"
+            (cd "$dir" && golangci-lint run ./...) || status=1
+            echo "::endgroup::"
+          done < <(git ls-files -- 'go.mod' '*/go.mod')
+          exit "$status"
+      - name: go test ./... (every module)
+        timeout-minutes: 3
+        run: |
+          status=0
+          while IFS= read -r mod; do
+            dir="$(dirname "$mod")"
+            echo "::group::go test $dir"
+            (cd "$dir" && go test ./...) || status=1
+            echo "::endgroup::"
+          done < <(git ls-files -- 'go.mod' '*/go.mod')
+          exit "$status"
+
+  android:
+    name: kotlin-android
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: edge/field-app
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: ${{ env.ANDROID_JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+      - name: Android lint and unit tests (./gradlew check; the runner image ships the Android SDK)
+        timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: ./gradlew --no-daemon check
+
+  elixir:
+    name: elixir
+    needs: changes
+    if: needs.changes.outputs.elixir == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      MIX_ENV: test
+    defaults:
+      run:
+        working-directory: services/comms
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+      - name: mix deps.get
+        run: mix deps.get
+      - name: mix format --check-formatted
+        timeout-minutes: 3
+        run: mix format --check-formatted
+      - name: credo
+        timeout-minutes: 3
+        run: mix credo --strict
+      - name: mix test
+        timeout-minutes: 3
+        run: mix test
+
+  proto:
+    name: proto
+    needs: changes
+    if: needs.changes.outputs.proto == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0 # buf breaking compares against develop
+          persist-credentials: false
+      - uses: bufbuild/buf-action@8c6a16e16f12ba20b6470afa9c2ba9b5ba8c97c3 # v1
+        with:
+          version: ${{ env.BUF_VERSION }}
+          setup_only: true
+      - name: buf lint
+        timeout-minutes: 3
+        run: buf lint proto
+      - name: buf breaking (against develop, ARCHITECTURE §8)
+        timeout-minutes: 3
+        run: |
+          if ! git cat-file -e origin/develop:proto/buf.yaml 2>/dev/null; then
+            echo "develop has no proto/buf.yaml yet: nothing to compare against."
+            exit 0
+          fi
+          git branch --force vigil-breaking-base origin/develop
+          buf breaking proto --against ".git#branch=vigil-breaking-base,subdir=proto"
+
+  ci-backend:
+    name: ci-backend
+    if: always()
+    needs: [changes, python, java, rust, go, android, elixir, proto]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every language gate passed or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null

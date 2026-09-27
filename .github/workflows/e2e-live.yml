@@ -1,0 +1,107 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Live end-to-end suite: Postgres (PostGIS + pgvector), Valkey, core and cockpit when present, Playwright in tests/e2e (P0)
+#
+# Skill §3 e2e-live: runs on PRs labelled `run-e2e` and on every push to main. It reuses the local CI
+# harness (docker-compose.ci.yml), so the database image is the same one engineers test against.
+# Core and cockpit start only once their Dockerfiles exist (P5/P10); Playwright runs once
+# tests/e2e exists (P33). Hard cap: 10 minutes (skill §4.3). Required on main: e2e-live.
+name: e2e-live
+
+on:
+  pull_request:
+    types: [labeled, opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-live-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  e2e-live:
+    name: e2e-live
+    # PRs into main always run it (it is a required check there); other PRs only with the
+    # run-e2e label, and not re-run when some other label is added.
+    if: >-
+      github.event_name == 'push' ||
+      github.base_ref == 'main' ||
+      (contains(github.event.pull_request.labels.*.name, 'run-e2e') &&
+       (github.event.action != 'labeled' || github.event.label.name == 'run-e2e'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Throwaway test credentials for the tmpfs-only CI database (docker-compose.ci.yml).
+      DATABASE_URL: postgresql://vigil_test:vigil_test_password@localhost:5433/vigil_test
+      VALKEY_URL: redis://localhost:6380/0
+      CORE_URL: http://localhost:8080
+      BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Start Postgres 18 (PostGIS + pgvector) and Valkey
+        run: docker compose -f docker-compose.ci.yml up --detach --wait test-postgres test-valkey
+
+      - name: Start the core backend (when services/core/Dockerfile exists)
+        if: hashFiles('services/core/Dockerfile') != ''
+        run: |
+          docker build --tag vigil-e2e/core services/core
+          docker run --detach --name vigil-core --network host \
+            --env DATABASE_URL --env VALKEY_URL --env ENVIRONMENT=test vigil-e2e/core
+          for _ in $(seq 60); do curl -fsS "$CORE_URL/actuator/health" > /dev/null && break; sleep 2; done
+          curl -fsS "$CORE_URL/actuator/health" # fails the step if still unhealthy after ~2 min
+
+      - name: Start the cockpit (when apps/cockpit/Dockerfile exists)
+        if: hashFiles('apps/cockpit/Dockerfile') != ''
+        run: |
+          docker build --tag vigil-e2e/cockpit apps/cockpit
+          docker run --detach --name vigil-cockpit --network host --env CORE_URL vigil-e2e/cockpit
+          for _ in $(seq 60); do curl -fsS "$BASE_URL" > /dev/null && break; sleep 2; done
+          curl -fsS "$BASE_URL" > /dev/null # fails the step if still down after ~2 min
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        if: hashFiles('tests/e2e/package.json') != ''
+        with:
+          package_json_file: ${{ hashFiles('package.json') != '' && 'package.json' || 'tests/e2e/package.json' }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        if: hashFiles('tests/e2e/package.json') != ''
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: "**/pnpm-lock.yaml"
+
+      - name: Playwright (tests/e2e)
+        if: hashFiles('tests/e2e/package.json') != ''
+        working-directory: tests/e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test
+
+      - name: No Playwright suite yet
+        if: hashFiles('tests/e2e/package.json') == ''
+        run: echo "::notice::tests/e2e does not exist yet (P33). Services started and passed health checks."
+
+      - name: Upload the Playwright report
+        if: failure() && hashFiles('tests/e2e/playwright-report/**') != ''
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: |
+          docker compose -f docker-compose.ci.yml logs --no-color --tail 200 || true
+          docker logs --tail 200 vigil-core 2>/dev/null || true
+          docker logs --tail 200 vigil-cockpit 2>/dev/null || true
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker rm --force vigil-core vigil-cockpit 2>/dev/null || true
+          docker compose -f docker-compose.ci.yml down --volumes --remove-orphans

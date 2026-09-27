@@ -1,0 +1,8 @@
+# Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Generated cockpit artifacts
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+.next
+node_modules
+next-env.d.ts
+tsconfig.tsbuildinfo
+AGENTS.md
+CLAUDE.md

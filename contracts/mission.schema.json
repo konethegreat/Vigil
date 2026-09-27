@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:vigil:mission:commands:v1",
+  "title": "Vigil synthetic mission commands v1",
+  "oneOf": [
+    { "$ref": "#/$defs/create" },
+    { "$ref": "#/$defs/plan" },
+    { "$ref": "#/$defs/addEvidence" },
+    { "$ref": "#/$defs/reviewEvidence" },
+    { "$ref": "#/$defs/transition" },
+    { "$ref": "#/$defs/outcome" }
+  ],
+  "$defs": {
+    "version": { "type": "integer", "minimum": 1 },
+    "id": { "type": "string", "minLength": 3, "maxLength": 60 },
+    "statement": { "type": "string", "minLength": 5, "maxLength": 2000 },
+    "create": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "objective", "domain", "priority", "location"],
+      "properties": {
+        "title": { "type": "string", "minLength": 5, "maxLength": 160 },
+        "objective": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "domain": {
+          "enum": [
+            "PROTECT",
+            "LIFELINES",
+            "RESPONSE",
+            "INTEGRITY",
+            "INVESTIGATE"
+          ]
+        },
+        "priority": { "enum": ["CRITICAL", "HIGH", "STANDARD"] },
+        "location": { "type": "string", "minLength": 2, "maxLength": 100 }
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "expected_version"],
+      "properties": {
+        "type": { "const": "generate_plan" },
+        "expected_version": { "$ref": "#/$defs/version" }
+      }
+    },
+    "addEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "expected_version",
+        "title",
+        "source",
+        "kind",
+        "statement",
+        "original"
+      ],
+      "properties": {
+        "type": { "const": "add_evidence" },
+        "expected_version": { "$ref": "#/$defs/version" },
+        "title": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "source": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "kind": {
+          "enum": [
+            "FIELD_REPORT",
+            "DOCUMENT",
+            "SENSOR",
+            "SERVICE_UPDATE",
+            "STATEMENT"
+          ]
+        },
+        "statement": { "$ref": "#/$defs/statement" },
+        "original": { "type": "string", "minLength": 5, "maxLength": 16000 }
+      }
+    },
+    "reviewEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "expected_version",
+        "evidence_id",
+        "status",
+        "note",
+        "statement"
+      ],
+      "properties": {
+        "type": { "const": "review_evidence" },
+        "expected_version": { "$ref": "#/$defs/version" },
+        "evidence_id": { "$ref": "#/$defs/id" },
+        "status": { "enum": ["SUPPORTED", "DISPUTED", "UNVERIFIED"] },
+        "note": { "type": "string", "minLength": 5, "maxLength": 1000 },
+        "statement": { "$ref": "#/$defs/statement" }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "expected_version", "task_id", "state", "receipt"],
+      "properties": {
+        "type": { "const": "transition_task" },
+        "expected_version": { "$ref": "#/$defs/version" },
+        "task_id": { "$ref": "#/$defs/id" },
+        "state": {
+          "enum": [
+            "PROPOSED",
+            "AUTHORISED",
+            "SENT",
+            "ACCEPTED",
+            "IN_PROGRESS",
+            "CONFIRMED",
+            "DECLINED",
+            "OUTCOME_UNKNOWN"
+          ]
+        },
+        "receipt": { "type": "string", "minLength": 5, "maxLength": 1000 }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "expected_version", "summary", "verification"],
+      "properties": {
+        "type": { "const": "record_outcome" },
+        "expected_version": { "$ref": "#/$defs/version" },
+        "summary": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "verification": { "type": "string", "minLength": 10, "maxLength": 2000 }
+      }
+    }
+  }
+}

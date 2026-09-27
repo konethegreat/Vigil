@@ -1,0 +1,114 @@
+# Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Local synthetic mission environment
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Forward investigation migration
+name: vigil-mission
+# Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction migration
+services:
+  cockpit:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: apps/cockpit/Dockerfile
+    environment:
+      VIGIL_CORE_URL: http://core:8080/api/v1
+      VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports: ["127.0.0.1:3100:3100"]
+    depends_on:
+      core: {condition: service_started}
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: vigil
+      POSTGRES_USER: vigil_admin
+      POSTGRES_PASSWORD: vigil_admin_local_only
+    ports: ["127.0.0.1:5547:5432"]
+    volumes:
+      - mission-db:/var/lib/postgresql
+      - ./infra/docker/mission-db/init.sql:/docker-entrypoint-initdb.d/001.sql:ro
+      - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/002.sql:ro
+      - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/003.sql:ro
+      - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  mind:
+    build: ./services/mind
+    environment:
+      VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+      VIGIL_OLLAMA_URL: http://host.docker.internal:11434
+      VIGIL_REASONER_MODEL: ${VIGIL_REASONER_MODEL:-}
+      VIGIL_CHALLENGER_MODEL: ${VIGIL_CHALLENGER_MODEL:-}
+    ports: ["127.0.0.1:8017:8000"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  core:
+    build:
+      context: .
+      dockerfile: services/core/Dockerfile
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/vigil
+      VIGIL_DEMO_MODE: "true"
+      VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+      VIGIL_SESSION_KEY: local-synthetic-session-key-not-for-production
+      VIGIL_MIND_URL: http://mind:8000
+    ports: ["127.0.0.1:8087:8080"]
+    depends_on:
+      db: {condition: service_healthy}
+      mind: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
+  migrate:
+    image: postgres:18-alpine
+    environment:
+      PGPASSWORD: vigil_admin_local_only
+    volumes:
+      - ./infra/docker/mission-db:/migrations:ro
+    command: ["psql", "-h", "db", "-U", "vigil_admin", "-d", "vigil", "-v", "ON_ERROR_STOP=1", "-f", "/migrations/access.sql", "-f", "/migrations/investigation.sql", "-f", "/migrations/extraction.sql"]
+    depends_on:
+      db: {condition: service_healthy}
+  test-db:
+    image: postgres:18-alpine
+    profiles: [checks]
+    environment:
+      POSTGRES_DB: vigil
+      POSTGRES_USER: vigil_admin
+      POSTGRES_PASSWORD: vigil_admin_local_only
+    tmpfs: [/var/lib/postgresql]
+    volumes:
+      - ./infra/docker/mission-db/init.sql:/docker-entrypoint-initdb.d/001.sql:ro
+      - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/002.sql:ro
+      - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/003.sql:ro
+      - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  core-test:
+    image: gradle:9.1.0-jdk25
+    profiles: [checks]
+    working_dir: /workspace
+    environment:
+      DATABASE_URL: jdbc:postgresql://test-db:5432/vigil
+      VIGIL_DEMO_MODE: "true"
+      VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+      VIGIL_SESSION_KEY: local-synthetic-session-key-not-for-production
+      VIGIL_MIND_URL: http://mind-test:8000
+    volumes:
+      - .:/workspace
+      - mission-gradle:/home/gradle/.gradle
+    command: ["gradle", "--no-daemon", "test", "spotlessCheck"]
+    depends_on:
+      test-db: {condition: service_healthy}
+      mind-test: {condition: service_started}
+  mind-test:
+    profiles: [checks]
+    build: ./services/mind
+    environment:
+      VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+      VIGIL_REASONER_MODEL: ""
+      VIGIL_CHALLENGER_MODEL: ""
+volumes:
+  mission-db:
+  mission-gradle:

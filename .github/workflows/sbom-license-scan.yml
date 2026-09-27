@@ -1,0 +1,169 @@
+# Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Syft SPDX SBOM (uploaded as an artifact) and the ADR-0003 licence policy gate (P0)
+#
+# Skill §3 sbom-license-scan; ADR-0003 "Controls": block red licences, and amber licences without
+# an entry in .github/licence-allowlist.yml, on every PR. Required status check: sbom-license-scan.
+# Syft reads the committed lockfiles (INSTRUCTIONS §6.5); SYFT_ENRICH=all lets it look licences up
+# online (Maven Central, npm, PyPI, Go proxy), because lockfiles alone rarely carry them.
+name: sbom-license-scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-license-scan-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  sbom-license-scan:
+    name: sbom-license-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Syft SBOM (SPDX JSON), uploaded as a workflow artifact
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        env:
+          SYFT_ENRICH: all
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+          artifact-name: sbom-${{ github.sha }}.spdx.json
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+
+      - name: Licence policy gate (ADR-0003)
+        run: |
+          python -m pip install --quiet "pyyaml==6.0.3"
+          python - <<'PY'
+          """Red licences always fail; amber licences fail unless allow-listed (ADR-0003)."""
+          import json
+          import os
+          import re
+          import sys
+
+          import yaml
+
+          # SPDX "BSL-1.0" is the Boost licence (green); the Business Source Licence is "BUSL-1.1".
+          RED = re.compile(
+              r"BUSL|BUSINESS[-_ ]SOURCE|SSPL|ELASTIC-2\.0|ELASTIC[-_ ]LICEN[CS]E|\bELV2\b"
+              r"|\bFSL-|FUNCTIONAL[-_ ]SOURCE|COMMONS[-_ ]CLAUSE|CC-BY-NC"
+              r"|RSAL|POLYFORM|CONFLUENT|NON-?COMMERCIAL|RESEARCH[-_ ]ONLY",
+              re.I,
+          )
+          # Fail closed (ADR-0003): only these SPDX ids are green; anything else is amber until classified.
+          GREEN = {
+              "APACHE-2.0", "MIT", "MIT-0", "BSD-2-CLAUSE", "BSD-3-CLAUSE", "0BSD", "ISC", "POSTGRESQL",
+              "ZLIB", "UNICODE-DFS-2016", "UNICODE-3.0", "BSL-1.0", "MPL-2.0", "EPL-2.0", "CC-BY-4.0",
+              "CC0-1.0", "UNLICENSE", "PYTHON-2.0", "PSF-2.0", "BLUEOAK-1.0.0", "X11", "CURL",
+          }
+
+          with open("sbom.spdx.json", encoding="utf-8") as fh:
+              sbom = json.load(fh)
+          with open(".github/licence-allowlist.yml", encoding="utf-8") as fh:
+              allowed = {e["package"] for e in (yaml.safe_load(fh) or {}).get("allowlist") or []}
+          ref_names = {x["licenseId"]: x.get("name", "") for x in sbom.get("hasExtractedLicensingInfos", [])}
+          # The element the document DESCRIBES is the scanned repository itself (Vigil's own code), not a dependency.
+          own = {
+              r.get("relatedSpdxElement") for r in sbom.get("relationships", [])
+              if r.get("spdxElementId") == "SPDXRef-DOCUMENT" and r.get("relationshipType") == "DESCRIBES"
+          } | set(sbom.get("documentDescribes") or [])
+
+
+          def licence_class(licence):
+              """0 green, 1 amber, 2 red for one licence id (LicenseRef-* judged by its name too)."""
+              text = f"{licence} {ref_names.get(licence, '')}"
+              if RED.search(text):
+                  return 2
+              return 0 if licence.upper() in GREEN else 1
+
+
+          def expression_class(expression):
+              """OR takes the best option, AND the worst obligation; WITH keeps the licence's class."""
+              tokens = re.findall(r"[()]|[^\s()]+", expression)
+              pos = 0
+
+              def peek():
+                  return tokens[pos].upper() if pos < len(tokens) else ""
+
+              def term():
+                  nonlocal pos
+                  token = tokens[pos]
+                  pos += 1
+                  if token == "(":
+                      value = either()
+                      pos += 1  # the closing ")"
+                  else:
+                      value = licence_class(token)
+                  if peek() == "WITH":
+                      pos += 2
+                  return value
+
+              def both():
+                  nonlocal pos
+                  value = term()
+                  while peek() == "AND":
+                      pos += 1
+                      value = max(value, term())
+                  return value
+
+              def either():
+                  nonlocal pos
+                  value = both()
+                  while peek() == "OR":
+                      pos += 1
+                      value = min(value, both())
+                  return value
+
+              try:
+                  return either()
+              except IndexError:  # malformed expression: the worst token decides
+                  return max(map(licence_class, tokens), default=0)
+
+
+          failures, waived, unknown = [], [], 0
+          packages = [p for p in sbom.get("packages", []) if p.get("SPDXID") not in own]
+          for pkg in packages:
+              expressions = [pkg.get(key) for key in ("licenseConcluded", "licenseDeclared")]
+              expressions = [e for e in expressions if e and e not in ("NOASSERTION", "NONE")]
+              if not expressions:
+                  unknown += 1
+                  if (pkg.get("name") or "") in allowed:
+                      continue
+                  purls = [r.get("referenceLocator", "") for r in pkg.get("externalRefs", [])]
+                  if any(p.startswith("pkg:github/") for p in purls):
+                      continue  # GitHub Actions: CI-only, SHA-pinned, never shipped (ADR-0003 scope)
+                  failures.append(f"🟡 unknown {pkg.get('name')}@{pkg.get('versionInfo', '?')}: no licence data")
+                  continue
+              worst = max(map(expression_class, expressions))
+              label = f"{pkg.get('name')}@{pkg.get('versionInfo', '?')}: {' / '.join(expressions)}"
+              if worst == 2:
+                  failures.append(f"🔴 red {label}")
+              elif worst == 1 and pkg.get("name") in allowed:
+                  waived.append(f"🟡 amber {label} (allow-listed)")
+              elif worst == 1:
+                  failures.append(f"🟡 amber {label} (not in .github/licence-allowlist.yml)")
+
+          lines = [
+              f"{len(packages)} packages, {unknown} without licence data, "
+              f"{len(waived)} allow-listed amber, {len(failures)} violation(s)",
+              *waived,
+              *failures,
+          ]
+          print("Licence gate (ADR-0003): " + "\n".join(lines))
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a", encoding="utf-8") as fh:
+                  fh.write("### Licence gate (ADR-0003)\n\n" + "".join(f"- {line}\n" for line in lines))
+          sys.exit(1 if failures else 0)
+          PY
