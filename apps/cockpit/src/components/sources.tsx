@@ -566,9 +566,13 @@ function ProposalReview({
             {run.decision.actor} · {date(run.decision.reviewed_at)}
           </small>
           <p>
-            {run.decision.object_ids.length} objects and{" "}
-            {run.decision.link_ids.length} relationships published. Unselected
-            proposals were rejected.
+            {run.decision.object_ids.length}{" "}
+            {run.decision.object_ids.length === 1 ? "object" : "objects"} and{" "}
+            {run.decision.link_ids.length}{" "}
+            {run.decision.link_ids.length === 1
+              ? "relationship"
+              : "relationships"}{" "}
+            published. Unselected proposals were rejected.
           </p>
           {!!run.decision.object_ids.length && (
             <button className="text-button" onClick={openInvestigation}>
@@ -605,9 +609,10 @@ function ProposalReview({
               />
             </label>
             <p className="source-help">
-              {objects.length} objects and {links.length} relationships
-              selected. All other proposals will be rejected. The decision is
-              final.
+              {objects.length} {objects.length === 1 ? "object" : "objects"} and{" "}
+              {links.length}{" "}
+              {links.length === 1 ? "relationship" : "relationships"} selected.
+              All other proposals will be rejected. The decision is final.
             </p>
             {error && (
               <div role="alert" className="notice danger">

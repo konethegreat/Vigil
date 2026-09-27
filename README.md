@@ -3,6 +3,7 @@
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Working local mission system -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Connected investigation workspace -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Personal GitHub and commit history links -->
+<!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 - Source review and connected operations direction -->
 
 # Vigil *(codename)*
 
@@ -15,7 +16,7 @@ Vigil turns fragmented operational data into a living model of real assets, peop
 > ⚠️ "Vigil" is an internal **codename** until trademark clearance ([ADR-0006](docs/adr/ADR-0006-codename-and-trademark-clearance.md)).
 
 ## Status
-**Investigation increment 02: connected local implementation.** A Java/PostgreSQL core, Python intelligence service and TypeScript cockpit run together. The investigation workspace connects typed, source-backed objects across missions, with relationship assessments, review history, event chronology and direct navigation into operational work. Synthetic infrastructure-crime and procurement inquiries demonstrate shared records across domains; protection, infrastructure and response retain the evidence-to-outcome mission workflow. The larger P0–P43 platform remains in development.
+**Source review increment 03: connected local implementation.** A Java/PostgreSQL core, Python intelligence service and TypeScript cockpit run together. Analysts preserve original text, obtain exact-quoted local-model proposals, and selectively publish reviewed objects and relationships into investigations. Typed records connect across missions, with source assessments, review history, event chronology and operational outcomes. Synthetic infrastructure-crime and procurement inquiries demonstrate the shared foundation. The larger P0–P43 platform remains in development; live surveillance and agency exchange are next capabilities to build.
 
 ## Run Vigil
 
@@ -33,7 +34,9 @@ You can open a mission, preserve original source text, revise an assessment with
 
 Start in **Investigations**. Select the infrastructure-components inquiry to follow stock, depot, access-event and delivery-document claims; the procurement inquiry reuses its supplier and document objects. Switch between Network, Timeline and Objects, inspect original sources, create cited objects, and record or review relationships. Evidence changes flag affected mission assertions for review. See [investigation acceptance](docs/INVESTIGATION_INCREMENT.md) and [ADR-0010](docs/adr/ADR-0010-investigation-workspace.md) for the bounded implementation and next platform work.
 
-The default planner uses a labelled deterministic checklist. Optional local Ollama reasoner and challenger models can be selected in `.env`; see [.env.example](.env.example). No hosted LLM or model download is invoked automatically. See the [runbook](docs/RUNNING_VIGIL.md), [acceptance record](docs/MISSION_INCREMENT.md), and [implementation decision](docs/adr/ADR-0009-first-mission-increment.md).
+Open **Sources** to import text, inspect its original and review quoted model proposals. Select supported objects and relationships, record a reason, then open the published records in Investigations. See [source review acceptance](docs/SOURCE_REVIEW_INCREMENT.md) and the [extraction contract](contracts/EXTRACTION.md). The [connected operations design](docs/CONNECTED_OPERATIONS.md) explains how observations, joint cases, evidence packets and accountable requests should connect institutions next.
+
+The default mission planner uses a labelled deterministic checklist. Optional local Ollama reasoner and challenger models can be selected in `.env`; see [.env.example](.env.example). Source extraction requires an available reasoner and reports failures explicitly. No hosted LLM or model download is invoked automatically. See the [runbook](docs/RUNNING_VIGIL.md), [mission acceptance record](docs/MISSION_INCREMENT.md), and [implementation decision](docs/adr/ADR-0009-first-mission-increment.md).
 
 ## Start here
 1. **[`INSTRUCTIONS.md`](INSTRUCTIONS.md)**: the compliance contract. Mandatory for every human and AI agent.
