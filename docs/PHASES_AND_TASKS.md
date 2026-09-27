@@ -1058,3 +1058,7 @@ The founder explicitly instructed implementation after the expanded concept revi
 ## Founder-directed observation and agency exchange — 2026-09-27
 
 **Status:** Design direction recorded; implementation pending. **Owner:** Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** [ADR-0012](adr/ADR-0012-connected-agency-operations.md) and [CONNECTED_OPERATIONS.md](CONNECTED_OPERATIONS.md). First demonstrate source capabilities, timed synthetic observations, explicit joint-case evidence release, receiving agency requests and acknowledgment/result records. Keep source custody and tenant boundaries, test late/duplicate events and unavailable coverage, and measure time to useful evidence and accepted responsibility. Live camera, toll and agency connections are not implemented by the current increments.
+
+## Founder-authorised connected operations increment 04 — 2026-09-27
+
+**Status:** In progress — Kone Tshivhinda (OpenAI Codex GPT-6). **Branch:** `codex/connected-operations`, from merged PR #1 on `origin/develop`. **Scope:** `contracts/COORDINATION.md`, ADR-0012, new Core coordination services/SQL/tests, Cockpit Observations/Agency inbox, local fixtures, acceptance and runbook updates. Founder explicitly approved the proposed incident-coordination workflow. Work alone; preserve existing workspaces and tenant boundaries. Verification criteria are in the contract; no complete platform phase is claimed.
