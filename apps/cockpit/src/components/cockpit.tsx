@@ -1,6 +1,7 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Mission workspace components
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Platform investigation navigation
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Direct navigation and source intake
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +14,6 @@ import {
   CheckCheck,
   ChevronRight,
   CircleCheck,
-  Circle,
   FileText,
   Fingerprint,
   GitBranch,
@@ -54,7 +54,9 @@ import { EvidenceDetail } from "./evidence-detail";
 import { IntelligenceView } from "./intelligence";
 import { HistoryView } from "./history";
 import { Investigations } from "./investigations";
-type View = "desk" | "investigations" | "intelligence" | "activity";
+import { Sources } from "./sources";
+import { SourceIntake } from "./source-intake";
+type View = "desk" | "investigations" | "sources" | "intelligence" | "activity";
 type Modal =
   | { type: "create" }
   | { type: "source" }
@@ -69,6 +71,10 @@ const tabs: Tab[] = [
   "Outcome",
 ];
 export function Cockpit() {
+  const [investigationTarget, setInvestigationTarget] = useState<{
+    missionId: string;
+    objectId: string;
+  }>();
   const [missions, setMissions] = useState<Mission[]>([]),
     [identity, setIdentity] = useState<Identity | null>(null),
     [selected, setSelected] = useState("VGL-0041");
@@ -163,6 +169,7 @@ export function Cockpit() {
     setAudit(null);
     setIntelligence(null);
     setMissions([]);
+    setInvestigationTarget(undefined);
     setView("desk");
     setIdentity(null);
     pending.current = null;
@@ -245,12 +252,12 @@ export function Cockpit() {
           </span>
           vigil<span className="brand-period">.</span>
         </Link>
-        <div className="sidebar-caption">INTELLIGENCE INTO OPERATIONS</div>
+        <div className="sidebar-caption">INTELLIGENCE &amp; OPERATIONS</div>
         <div className="workspace-label">
           <span className="connection-dot" />
           <span>
             South Africa
-            <span className="small-block">CONNECTED WORKSPACE / 02</span>
+            <span className="small-block">LOCAL WORKSPACE</span>
           </span>
         </div>
         <nav aria-label="Primary navigation">
@@ -258,16 +265,28 @@ export function Cockpit() {
             className={
               view === "investigations" ? "nav-item selected" : "nav-item"
             }
-            onClick={() => setView("investigations")}
+            onClick={() => {
+              setInvestigationTarget(undefined);
+              setView("investigations");
+            }}
+            disabled={busy}
           >
             <GitBranch size={18} /> Investigations
           </button>
           <button
+            className={view === "sources" ? "nav-item selected" : "nav-item"}
+            disabled={busy}
+            onClick={() => setView("sources")}
+          >
+            <FileText size={18} /> Sources
+          </button>
+          <button
             className={view === "desk" ? "nav-item selected" : "nav-item"}
             onClick={() => setView("desk")}
+            disabled={busy}
           >
             <Layers3 size={18} />
-            Mission desk
+            Missions
             <span className="nav-count">
               {missions.length.toString().padStart(2, "0")}
             </span>
@@ -277,6 +296,7 @@ export function Cockpit() {
               view === "intelligence" ? "nav-item selected" : "nav-item"
             }
             onClick={() => setView("intelligence")}
+            disabled={busy}
           >
             <Waypoints size={18} />
             AI operations
@@ -284,28 +304,12 @@ export function Cockpit() {
           <button
             className={view === "activity" ? "nav-item selected" : "nav-item"}
             onClick={() => setView("activity")}
+            disabled={busy}
           >
             <Activity size={18} />
             Decision history
           </button>
         </nav>
-        <div className="sidebar-note">
-          <span className="eyebrow">ONE CONNECTED PLATFORM</span>
-          <p>
-            Trace the evidence.
-            <br />
-            Connect the operational picture.
-            <br />
-            <em>Stay until it is done.</em>
-          </p>
-          <div className="mini-path">
-            <Circle size={8} />
-            <span />
-            <Circle size={8} />
-            <span />
-            <CircleCheck size={13} />
-          </div>
-        </div>
         <div className="identity">
           <span className="avatar">
             {identity?.read_only
@@ -334,7 +338,7 @@ export function Cockpit() {
         </label>
         <div className="sidebar-bottom">
           <span className="connection-dot" />
-          LOCAL ENVIRONMENT <span>v0.2</span>
+          LOCAL ENVIRONMENT <span>v0.3</span>
         </div>
       </aside>
       <div className="workspace">
@@ -344,12 +348,14 @@ export function Cockpit() {
             <ChevronRight size={12} />
             <strong>
               {view === "desk"
-                ? "Mission desk"
+                ? "Missions"
                 : view === "investigations"
                   ? "Investigations"
-                  : view === "intelligence"
-                    ? "AI operations"
-                    : "Decision history"}
+                  : view === "sources"
+                    ? "Sources"
+                    : view === "intelligence"
+                      ? "AI operations"
+                      : "Decision history"}
             </strong>
           </div>
           <div className="topbar-right">
@@ -372,30 +378,27 @@ export function Cockpit() {
         <main id="main">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">
-                {view === "investigations"
-                  ? "VIGIL / INTELLIGENCE WORKSPACE"
-                  : identity?.actor === "protection"
-                    ? "CARE, WITH CONTINUITY"
-                    : "FROM SIGNAL TO OUTCOME"}
-              </div>
               <h1>
                 {view === "desk"
-                  ? "The mission desk."
+                  ? "Missions"
                   : view === "investigations"
-                    ? "See the connections."
-                    : view === "intelligence"
-                      ? "Intelligence, with evidence."
-                      : "Every decision leaves a trace."}
+                    ? "Investigations"
+                    : view === "sources"
+                      ? "Sources"
+                      : view === "intelligence"
+                        ? "AI operations"
+                        : "Decision history"}
               </h1>
               <p>
                 {view === "desk"
-                  ? "A shared picture. A clear next step. A result that holds up."
+                  ? "Objectives, evidence, assigned work and confirmed outcomes."
                   : view === "investigations"
-                    ? "Evidence, entities, and events. Across the work that matters."
-                    : view === "intelligence"
-                      ? "Specialist reasoning, bounded tools, and visible uncertainty."
-                      : "Follow the record from first signal to confirmed outcome."}
+                    ? "Explore source-backed objects, events and relationships across missions."
+                    : view === "sources"
+                      ? "Read original records. Review quoted proposals. Publish supported findings."
+                      : view === "intelligence"
+                        ? "Specialist reasoning, bounded tools, and visible uncertainty."
+                        : "Follow the record from first signal to confirmed outcome."}
               </p>
             </div>
             {view === "desk" && (
@@ -426,6 +429,7 @@ export function Cockpit() {
               key={identity.actor}
               identity={identity}
               missions={missions}
+              initialTarget={investigationTarget}
               onBusy={setBusy}
               refreshMissions={load}
               onMissionChange={(updated) =>
@@ -438,6 +442,24 @@ export function Cockpit() {
                 setSelected(id);
                 setTab("Evidence");
                 setView("desk");
+              }}
+            />
+          ) : view === "sources" && identity ? (
+            <Sources
+              key={identity.actor}
+              identity={identity}
+              missions={missions}
+              onBusy={setBusy}
+              refreshMissions={load}
+              onMissionChange={(updated) =>
+                setMissions((items) => [
+                  updated,
+                  ...items.filter((item) => item.id !== updated.id),
+                ])
+              }
+              openInvestigation={(missionId, objectId) => {
+                setInvestigationTarget({ missionId, objectId });
+                setView("investigations");
               }}
             />
           ) : view === "intelligence" ? (
@@ -656,7 +678,7 @@ export function Cockpit() {
                         <>
                           <SectionHeading
                             label="THE SOURCE REGISTER"
-                            title="Keep the facts connected."
+                            title="Evidence register"
                             action={
                               <button
                                 className="button secondary small"
@@ -744,7 +766,7 @@ export function Cockpit() {
                         <>
                           <SectionHeading
                             label="ACCOUNTABLE HANDOFFS"
-                            title="Sending is only the beginning."
+                            title="Operations and receipts"
                           />
                           <p className="section-intro">
                             Every transition requires a recorded receipt. This
@@ -962,10 +984,6 @@ export function Cockpit() {
               </div>
             </>
           )}
-          <footer className="page-footer">
-            <span>BUILT FOR THE WORK THAT CANNOT BE LEFT UNFINISHED.</span>
-            <span>VIGIL / SOUTH AFRICA</span>
-          </footer>
         </main>
       </div>
       {toast && (
@@ -1047,62 +1065,13 @@ export function Cockpit() {
             </Form>
           )}
           {modal.type === "source" && (
-            <Form
+            <SourceIntake
               busy={busy}
-              label="Preserve source"
-              onSubmit={async (data) => {
+              save={async (data) => {
                 await execute({ type: "add_evidence", ...data });
                 setModal(null);
               }}
-            >
-              <Field
-                label="Source title"
-                name="title"
-                minLength={3}
-                maxLength={160}
-              />
-              <div className="field-pair">
-                <Field
-                  label="Source or custodian"
-                  name="source"
-                  minLength={2}
-                  maxLength={160}
-                />
-                <Field label="Record type" name="kind">
-                  <select name="kind">
-                    {[
-                      "FIELD_REPORT",
-                      "DOCUMENT",
-                      "SENSOR",
-                      "SERVICE_UPDATE",
-                      "STATEMENT",
-                    ].map((d) => (
-                      <option key={d} value={d}>
-                        {pretty(d)}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <Field
-                label="What does this source report?"
-                name="statement"
-                multiline
-                minLength={5}
-                maxLength={2000}
-              />
-              <Field
-                label="Original text to preserve"
-                name="original"
-                multiline
-                minLength={5}
-                maxLength={16000}
-              />
-              <div className="notice">
-                New sources begin as unverified. Adding a source invalidates the
-                current plan.
-              </div>
-            </Form>
+            />
           )}
           {modal.type === "evidence" && mission && (
             <EvidenceDetail

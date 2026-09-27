@@ -1,5 +1,6 @@
 // Written by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Connected investigation workspace
 "use client";
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Plain record counts
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -48,6 +49,7 @@ export function Investigations({
   openMission,
   onBusy,
   refreshMissions,
+  initialTarget,
 }: {
   identity: Identity;
   missions: Mission[];
@@ -55,18 +57,19 @@ export function Investigations({
   openMission: (id: string) => void;
   onBusy: (busy: boolean) => void;
   refreshMissions: () => Promise<void>;
+  initialTarget?: { missionId: string; objectId: string };
 }) {
   const [graph, setGraph] = useState<InvestigationGraph>(emptyGraph);
   const [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [scope, setScope] = useState(""),
+  const [scope, setScope] = useState(initialTarget?.missionId || ""),
     [query, setQuery] = useState(""),
     [type, setType] = useState("");
   const [view, setView] = useState<"Network" | "Timeline" | "Objects">(
-    "Network",
+    initialTarget ? "Objects" : "Network",
   );
-  const [selectedId, setSelectedId] = useState(""),
+  const [selectedId, setSelectedId] = useState(initialTarget?.objectId || ""),
     [focus, setFocus] = useState(false),
     [modal, setModal] = useState<Modal>(null);
   const [formMission, setFormMission] = useState(""),
@@ -214,41 +217,23 @@ export function Investigations({
 
   return (
     <div className="investigation-workspace">
-      <section
-        className="investigation-summary"
-        aria-label="Investigation coverage"
-      >
-        <div>
-          <span className="eyebrow">ONE OPERATIONAL PICTURE</span>
-          <p>Connect records. Test explanations. Direct the next move.</p>
-        </div>
-        <div>
-          <strong>{graph.objects.length}</strong>
-          <span>Source-backed objects</span>
-        </div>
-        <div>
-          <strong>{graph.links.length}</strong>
-          <span>Recorded relationships</span>
-        </div>
-        <div>
-          <strong>
-            {new Set(graph.objects.map((object) => object.mission_id)).size}
-          </strong>
-          <span>Connected missions</span>
-        </div>
-        <div className="attention">
-          <strong>
-            {
-              graph.links.filter(
-                (link) =>
-                  link.assessment === "DISPUTED" ||
-                  link.provenance.needs_review,
-              ).length
-            }
-          </strong>
-          <span>Disputed / needs review</span>
-        </div>
-      </section>
+      <div className="investigation-counts" aria-label="Investigation coverage">
+        <span>{graph.objects.length} objects</span>
+        <span>{graph.links.length} relationships</span>
+        <span>
+          {new Set(graph.objects.map((object) => object.mission_id)).size}{" "}
+          missions
+        </span>
+        <span>
+          {
+            graph.links.filter(
+              (link) =>
+                link.assessment === "DISPUTED" || link.provenance.needs_review,
+            ).length
+          }{" "}
+          disputed or requiring review
+        </span>
+      </div>
       <div className="investigation-toolbar">
         <label>
           <span>Investigation scope</span>

@@ -1,11 +1,9 @@
 /* Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Vigil fieldbook design system */
 /* Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification */
+/* Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Direct workspace layout */
 @import url("./tokens.css");
 * {
   box-sizing: border-box;
-}
-html {
-  scroll-behavior: smooth;
 }
 body {
   margin: 0;
@@ -226,6 +224,7 @@ a svg {
   margin: 0 4px;
 }
 .identity {
+  margin-top: auto;
   border-top: 1px solid #ffffff17;
   padding: 20px 2px 15px;
   display: flex;

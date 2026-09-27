@@ -2,6 +2,7 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation gateway coverage
 import { afterEach, describe, expect, it, vi } from "vitest";
+// Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction gateway coverage
 import { NextRequest } from "next/server";
 vi.mock("server-only", () => ({}));
 import { GET, POST } from "../src/app/api/vigil/[...path]/route";
@@ -26,6 +27,35 @@ function request(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("cockpit gateway", () => {
+  it("permits scoped source reviews and rejects arbitrary extraction paths", async () => {
+    const fetcher = vi
+      .fn()
+      .mockImplementation(async () => Response.json({ runs: [] }));
+    vi.stubGlobal("fetch", fetcher);
+    const cookie = { cookie: "vigil_demo_session=server-signed-token" };
+    for (const path of [
+      "missions/VGL-TEST/extractions",
+      "extractions",
+      "extractions/EXT-abc-123/review",
+    ]) {
+      const response = path.startsWith("missions/")
+        ? await GET(request(path, undefined, cookie), context(path))
+        : await POST(
+            request(path, { expected_version: 3 }, cookie),
+            context(path),
+          );
+      expect(response.status).toBe(200);
+    }
+    expect(
+      (
+        await GET(
+          request("extractions/internal"),
+          context("extractions/internal"),
+        )
+      ).status,
+    ).toBe(404);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
   it("forwards investigation reads and commands while denying nested arbitrary paths", async () => {
     const fetcher = vi
       .fn()
