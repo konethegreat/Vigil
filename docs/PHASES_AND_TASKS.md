@@ -1054,3 +1054,7 @@ The founder explicitly instructed implementation after the expanded concept revi
 ## Founder-authorised source review increment 03 — 2026-09-27
 
 **Status:** Local implementation and acceptance complete — Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** ADR-0011 and contracts/EXTRACTION.md; Mind extraction, Core proposal persistence/review, Sources workspace, direct interface cleanup and acceptance. Existing cross-phase local increment and draft PR #1 continue; no full platform phase is marked complete. Evidence and bounded capabilities: [SOURCE_REVIEW_INCREMENT.md](SOURCE_REVIEW_INCREMENT.md).
+
+## Founder-directed observation and agency exchange — 2026-09-27
+
+**Status:** Design direction recorded; implementation pending. **Owner:** Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** [ADR-0012](adr/ADR-0012-connected-agency-operations.md) and [CONNECTED_OPERATIONS.md](CONNECTED_OPERATIONS.md). First demonstrate source capabilities, timed synthetic observations, explicit joint-case evidence release, receiving agency requests and acknowledgment/result records. Keep source custody and tenant boundaries, test late/duplicate events and unavailable coverage, and measure time to useful evidence and accepted responsibility. Live camera, toll and agency connections are not implemented by the current increments.
