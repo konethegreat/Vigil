@@ -2,6 +2,7 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Allow scoped investigation endpoints
 import "server-only";
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Bounded coordination routes and regional demo identities
 // Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Scoped extraction endpoints
 import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
@@ -11,7 +12,7 @@ const gateway =
   process.env.VIGIL_INTERNAL_TOKEN || "local-synthetic-mission-only";
 const cookieName = "vigil_demo_session";
 const allowed =
-  /^(missions(?:\/VGL-[A-Za-z0-9-]+(?:\/(commands|audit|export|extractions))?)?|extractions(?:\/EXT-[A-Za-z0-9-]+\/review)?|investigations(?:\/commands)?|session|intelligence\/status|health)$/;
+  /^(missions(?:\/VGL-[A-Za-z0-9-]+(?:\/(commands|audit|export|extractions))?)?|extractions(?:\/EXT-[A-Za-z0-9-]+\/review)?|investigations(?:\/commands)?|coordination\/(?:workspace|search|observations|sources(?:\/CAP-[A-Za-z0-9-]+\/status)?|cases(?:\/CASE-[A-Za-z0-9-]+(?:\/export)?)?|requests(?:\/REQ-[A-Za-z0-9-]+\/commands)?)|session|intelligence\/status|health)$/;
 async function session(actor: string) {
   const response = await fetch(`${core}/session`, {
     method: "POST",
@@ -66,7 +67,16 @@ async function handle(
     }
     if (path === "session" && request.method === "POST") {
       const actor = JSON.parse(body!).actor;
-      if (!["operations", "protection", "reviewer"].includes(actor))
+      if (
+        ![
+          "operations",
+          "protection",
+          "reviewer",
+          "gauteng",
+          "limpopo",
+          "agency-reviewer",
+        ].includes(actor)
+      )
         return NextResponse.json(
           { message: "Unknown demonstration workspace." },
           { status: 400 },
@@ -118,7 +128,7 @@ async function handle(
     if (path.endsWith("/export") && upstream.ok)
       response.headers.set(
         "Content-Disposition",
-        `attachment; filename="${path.split("/")[1]}-synthetic-record.json"`,
+        `attachment; filename="${path.split("/").at(-2)}-synthetic-record.json"`,
       );
     return response;
   } catch {
