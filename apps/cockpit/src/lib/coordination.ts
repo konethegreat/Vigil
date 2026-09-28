@@ -90,6 +90,14 @@ export type Receipt = {
   previous_hash: string;
   hash: string;
 };
+export function receiptClockRegressed(
+  receipts: Pick<Receipt, "at">[],
+): boolean {
+  return receipts.some(
+    (receipt, index) =>
+      index > 0 && Date.parse(receipt.at) < Date.parse(receipts[index - 1].at),
+  );
+}
 export type RequestDetail = AgencyRequest & {
   packets: Packet[];
   receipts: Receipt[];
@@ -207,6 +215,19 @@ export function mapPositions(sources: Capability[]) {
 }
 export function isoLocal(value: string): string {
   return new Date(value).toISOString();
+}
+export function groupedMapPositions(sources: Capability[]) {
+  const grouped = new Map<
+    string,
+    { sources: Capability[]; x: number; y: number }
+  >();
+  for (const { source, x, y } of mapPositions(sources)) {
+    const key = `${source.latitude}:${source.longitude}`;
+    const group = grouped.get(key) || { sources: [], x, y };
+    group.sources.push(source);
+    grouped.set(key, group);
+  }
+  return [...grouped.values()];
 }
 export function localInput(value = new Date()): string {
   return new Date(value.getTime() - value.getTimezoneOffset() * 60000)

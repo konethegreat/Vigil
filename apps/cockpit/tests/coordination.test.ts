@@ -2,13 +2,26 @@
 import { describe, it, expect } from "vitest";
 import {
   mapPositions,
+  groupedMapPositions,
   orderedObservations,
   requestActions,
+  receiptClockRegressed,
   type AgencyRequest,
   type Capability,
   type Observation,
 } from "../src/lib/coordination";
 import type { Identity } from "../src/lib/contracts";
+it("flags a backwards server clock without changing receipt order", () => {
+  const receipts = [
+    { at: "2026-09-28T18:57:00Z" },
+    { at: "2026-09-28T18:55:00Z" },
+  ];
+  expect(receiptClockRegressed(receipts)).toBe(true);
+  expect(receipts[0].at).toBe("2026-09-28T18:57:00Z");
+  expect(receiptClockRegressed([])).toBe(false);
+  expect(receiptClockRegressed([receipts[0], receipts[0]])).toBe(false);
+  expect(receiptClockRegressed([...receipts].reverse())).toBe(false);
+});
 const sender: Identity = {
   actor: "gauteng",
   name: "Synthetic sender",
@@ -94,6 +107,19 @@ describe("agency action projection", () => {
   });
 });
 describe("observation projections", () => {
+  it("keeps co-located source identities accessible at one unchanged position", () => {
+    const sources = [
+      { id: "camera", latitude: -25, longitude: 28 },
+      { id: "register", latitude: -25, longitude: 28 },
+      { id: "other", latitude: -24, longitude: 28.5 },
+    ] as Capability[];
+    const groups = groupedMapPositions(sources);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].sources.map((s) => s.id)).toEqual(["camera", "register"]);
+    expect(groups[0].x).toBe(mapPositions(sources)[0].x);
+    expect(groups[0].y).toBe(mapPositions(sources)[0].y);
+    expect(groups[1].sources[0].id).toBe("other");
+  });
   it("orders by event time rather than arrival time without changing input order", () => {
     const records = [
       {

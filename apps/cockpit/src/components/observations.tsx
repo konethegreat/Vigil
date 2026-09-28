@@ -7,7 +7,7 @@ import type { Identity } from "@/lib/contracts";
 import {
   isoLocal,
   localInput,
-  mapPositions,
+  groupedMapPositions,
   orderedObservations,
   type Capability,
   type Observation,
@@ -576,6 +576,7 @@ function CoverageMap({
   observations: Observation[];
   select: (id: string) => void;
 }) {
+  const positions = groupedMapPositions(sources);
   return (
     <div className="coverage-map">
       <svg
@@ -597,14 +598,17 @@ function CoverageMap({
         <text x="20" y="26" className="map-caption">
           N ↑ · Source positions
         </text>
-        {mapPositions(sources).map(({ source, x, y }) => {
-          const first = observations.find((o) => o.source_id === source.id);
+        {positions.map(({ sources: atPosition, x, y }, index) => {
+          const first = observations.find((o) =>
+            atPosition.some((s) => s.id === o.source_id),
+          );
           return (
             <g
-              key={source.id}
+              key={atPosition[0].id}
               role="button"
               tabIndex={0}
-              aria-label={`${source.name}, ${pretty(source.status)}, ${observations.filter((o) => o.source_id === source.id).length} observations`}
+              aria-disabled={!first}
+              aria-label={`Position ${index + 1}: ${atPosition.map((s) => s.name).join(", ")}`}
               onClick={() => {
                 if (first) select(first.id);
               }}
@@ -620,22 +624,44 @@ function CoverageMap({
                 cy={y}
                 r="12"
                 fill={
-                  source.status === "AVAILABLE"
+                  atPosition.every((s) => s.status === "AVAILABLE")
                     ? "var(--forest)"
                     : "var(--orange)"
                 }
               />
               <circle cx={x} cy={y} r="4" fill="var(--white)" />
               <text x={x} y={y + 28} textAnchor="middle">
-                {source.name}
+                {index + 1}
+                {atPosition.length > 1 ? ` · ${atPosition.length} sources` : ""}
               </text>
             </g>
           );
         })}
       </svg>
+      <ul className="map-source-key" aria-label="Map source key">
+        {positions.flatMap(({ sources: atPosition }, index) =>
+          atPosition.map((source) => {
+            const first = observations.find((o) => o.source_id === source.id);
+            return (
+              <li key={source.id}>
+                <button
+                  className="text-button"
+                  disabled={!first}
+                  onClick={() => {
+                    if (first) select(first.id);
+                  }}
+                >
+                  {index + 1} · {source.name} · {pretty(source.status)}
+                </button>
+              </li>
+            );
+          }),
+        )}
+      </ul>
       <p>
         <MapPin size={13} />
-        Illustrative positions. No route inference or live map layer.
+        Illustrative positions. Shared positions are grouped. No route
+        inference.
       </p>
     </div>
   );

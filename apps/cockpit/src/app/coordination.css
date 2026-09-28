@@ -260,6 +260,16 @@
   height: auto;
   display: block;
 }
+.map-source-key {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+}
+.map-source-key button {
+  text-align: left;
+  padding: 6px 0;
+  font-size: 11px;
+}
 .coverage-map svg g {
   cursor: pointer;
 }

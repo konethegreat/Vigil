@@ -9,6 +9,7 @@ import {
   isoLocal,
   localInput,
   requestActions,
+  receiptClockRegressed,
   type AgencyRequest,
   type CaseDetail,
   type CoordinationWorkspace,
@@ -550,6 +551,13 @@ function CasePanel({
                   : "Receipt verification failed"}
               </span>
             </div>
+            {receiptClockRegressed(request.receipts) && (
+              <p className="notice">
+                The server clock moved backwards between receipts. History
+                follows the recorded transaction sequence; these timestamps
+                cannot establish reliable elapsed times.
+              </p>
+            )}
             <ol>
               {request.receipts.map((receipt) => (
                 <li key={receipt.id}>
