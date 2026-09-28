@@ -236,11 +236,14 @@ final class CoordinationService {
           db.queryForList("select pg_advisory_xact_lock(hashtextextended(?,0))", "case:" + cid);
           Problem.require(
               db.queryForObject(
-                      "select count(*) from agency_requests where case_id=?", Integer.class, cid)
+                      "select count(*) from agency_requests where case_id=? and sender_tenant=?",
+                      Integer.class,
+                      cid,
+                      context.tenant())
                   < 100,
               409,
               "CAPACITY",
-              "Case request limit reached.");
+              "Originating agency request limit reached for this case.");
           String recipient =
               (String)
                   (caseRecord.get("owner_tenant").equals(context.tenant())

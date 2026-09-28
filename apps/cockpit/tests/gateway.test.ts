@@ -66,14 +66,12 @@ describe("cockpit gateway", () => {
   it("issues regional synthetic sessions through the same HttpOnly boundary", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          Response.json({
-            token: "signed-test-token",
-            identity: { actor: "limpopo" },
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        Response.json({
+          token: "signed-test-token",
+          identity: { actor: "limpopo" },
+        }),
+      ),
     );
     const response = await POST(
       request("session", { actor: "limpopo" }),

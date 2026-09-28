@@ -171,6 +171,37 @@ class CoordinationIntegrationTest {
   }
 
   @Test
+  void requestCapacityIsPerOriginatingAgencyRegardlessOfPeerVisibility() {
+    String cid = createCase();
+    String oid = (String) observation(GP).get("id");
+    Instant expires = Instant.now().plusSeconds(3600);
+    for (int i = 0; i < 100; i++) {
+      transition(GP, draft(cid, oid, expires), "RELEASED");
+    }
+    fails(409, () -> draft(cid, oid, expires));
+    var receiving =
+        cases.draft(
+            LP,
+            key(),
+            Json.object(
+                "case_id",
+                cid,
+                "title",
+                "Independent receiving-team request",
+                "task",
+                "Review the selected receiving-team source independently.",
+                "observation_ids",
+                List.of(observation(LP).get("id")),
+                "due_at",
+                expires.minusSeconds(60).toString(),
+                "expires_at",
+                expires.toString(),
+                "release_reason",
+                "Selected fictional record requires peer review."));
+    assertEquals("DRAFT", receiving.get("state"));
+  }
+
+  @Test
   void observationIsolationCorrectionsAndImmutability() {
     var original = observation(GP);
     repo.scoped(

@@ -1,5 +1,6 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Java mission runtime
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-28 - Tomcat security patch
 plugins {
     java
     jacoco
@@ -11,6 +12,8 @@ group = "africa.vigil"
 version = "0.1.0"
 java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
 repositories { mavenCentral() }
+// https://tomcat.apache.org/security-11.html - fixes in 11.0.25 and 11.0.26.
+extra["tomcat.version"] = "11.0.26"
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")

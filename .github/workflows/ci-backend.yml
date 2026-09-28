@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Polyglot backend CI: path-filtered Python, Java, Rust, Go, Kotlin/Android, Elixir and Protobuf gates that no-op until each project exists (P0)
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-28 — Run Core integration gates with their database and Mind dependencies
 #
 # Skill §3 ci-backend, generalised to the ADR-0001 language charter. A language job runs only when
 # (a) its paths changed and (b) its project entrypoint exists, so the workflow stays green and
@@ -187,14 +188,10 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
-      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: ${{ env.JAVA_VERSION }}
-      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5; also validates the committed Gradle wrapper
+      - uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
       - name: Gradle spotlessCheck · check · test
         timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
-        run: ./gradlew --no-daemon spotlessCheck check test
+        run: docker compose -f docker-compose.dev.yml --profile checks run --rm core-test gradle --no-daemon spotlessCheck check test --rerun-tasks
 
   rust:
     name: rust
