@@ -1,0 +1,24 @@
+# Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — Citation metadata for Vigil platform
+cff-version: 1.2.0
+message: "If you reference or build upon this platform, please cite it using the following metadata."
+authors:
+  - family-names: "Tshivhinda"
+    given-names: "Kone"
+    email: "erictshivhinda@gmail.com"
+    website: "https://konethegreat.github.io"
+title: "Vigil: Sovereign Operational Intelligence for Africa"
+abstract: "Vigil is a sovereign operational intelligence platform turning fragmented operational data into a governed, constitutional ontology with strict audit trails, local AI reasoning, and verifiable write-back."
+version: 0.1.0
+date-released: 2026-09-25
+repository-code: "https://github.com/konethegreat/Vigil"
+url: "https://github.com/konethegreat/Vigil"
+license: Apache-2.0
+keywords:
+  - "operational-intelligence"
+  - "ontology"
+  - "sovereign-technology"
+  - "palantir-alternative"
+  - "knowledge-graph"
+  - "decision-support"
+  - "investigations"
+  - "africa"

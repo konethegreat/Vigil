@@ -1,0 +1,72 @@
+# Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — GitHub Issue Form for bug reports
+name: Bug Report
+description: File a reproducible bug or defect in Vigil
+title: "fix(repo): <concise bug description>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue in Vigil. Please review [SECURITY.md](../SECURITY.md) first if reporting a security vulnerability.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which part of Vigil is experiencing this issue?
+      options:
+        - "Core (Java / Spring Modulith)"
+        - "Mind (Python / AI Gateway / Extraction)"
+        - "Cockpit (TypeScript / Next.js)"
+        - "Warden (Security Kernel / RLS)"
+        - "Database / Schema (PostgreSQL / Migrations)"
+        - "Docker / Local CI / Infrastructure"
+        - "Documentation / Contracts"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Current Behavior
+      description: Describe what happened in detail.
+      placeholder: "When opening the Sources workspace and reviewing proposals..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: Describe what you expected to happen according to system documentation.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal, exact steps to reproduce the issue.
+      placeholder: |
+        1. Start containers with `docker compose -f docker-compose.dev.yml up -d`
+        2. Navigate to `http://127.0.0.1:3100/sources`
+        3. Submit text...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & Versions
+      description: Relevant runtime environment details.
+      value: |
+        - OS: [e.g. Windows 11 / Ubuntu 24.04 / macOS]
+        - Docker Version:
+        - Active Branch: [e.g. develop / codex/connected-operations]
+        - Browser (if UI): [e.g. Chrome / Firefox / Safari]
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: "I have confirmed this report contains no real personal data, classified operational details, or secret keys."
+          required: true
+        - label: "I searched existing issues and discussions to verify this has not been reported yet."
+          required: true
