@@ -8,6 +8,7 @@
 # Syft reads the committed lockfiles (INSTRUCTIONS §6.5), which rarely carry licence metadata. The
 # per-ecosystem network flags make Syft fetch Maven POMs, npm metadata and PyPI metadata; the
 # previous SYFT_ENRICH variable is not a Syft option and silently left every Maven package unknown.
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 name: sbom-license-scan
 
 on:
@@ -43,7 +44,7 @@ jobs:
           output-file: sbom.spdx.json
           artifact-name: sbom-${{ github.sha }}.spdx.json
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
 

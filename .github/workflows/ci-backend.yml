@@ -8,6 +8,7 @@
 # Required status check: the `ci-backend` gate job (a skipped job would otherwise count as passing).
 # Local mirror: `just ci-backend` → scripts/ci/run-backend.sh. Bump versions together with
 # infra/docker/ci/Dockerfile.
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 name: ci-backend
 
 on:
@@ -196,7 +197,7 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5; also validates the committed Gradle wrapper
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1; also validates the committed Gradle wrapper
       - name: Start disposable test database and Mind
         run: docker compose -f docker-compose.dev.yml --profile checks up -d --wait test-db mind-test
       - name: Gradle spotlessCheck · check · test
@@ -302,7 +303,7 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.ANDROID_JAVA_VERSION }}
-      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Android lint and unit tests (./gradlew check; the runner image ships the Android SDK)
         timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
         run: ./gradlew --no-daemon check
