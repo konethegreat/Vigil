@@ -7,7 +7,7 @@ plugins {
     jacoco
     id("org.springframework.boot") version "4.0.9"
     id("io.spring.dependency-management") version "1.1.7"
-    id("com.diffplug.spotless") version "7.2.1"
+    id("com.diffplug.spotless") version "8.10.4"
 }
 group = "africa.vigil"
 version = "0.1.0"
