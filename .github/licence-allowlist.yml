@@ -1,5 +1,6 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — ADR-0003 amber-licence allow-list read by sbom-license-scan.yml (P0)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Record the dev-only mypy dependencies whose wheel metadata Syft cannot read (P1 task 1.7)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Record protobuf's non-SPDX licence label from the OTLP exporter
 #
 # What this file is
 #   The licence gate in .github/workflows/sbom-license-scan.yml classifies every package in the
@@ -57,6 +58,16 @@ allowlist:
     licence: MPL-2.0
     adr: ADR-0003
     scope: services/mind (dev-only mypy dependency; unmodified; no SPDX metadata upstream)
+    approved_by: Kone Tshivhinda (Qoder)
+    review_by: 2027-04-30
+  # protobuf 7.x declares "License: 3-Clause BSD License", which Syft emits as the non-SPDX
+  # id LicenseRef-3-Clause-BSD-License, so the gate cannot classify it as green. The wheel
+  # metadata and the bundled LICENSE were read directly: BSD-3-Clause, permissive, unmodified.
+  # It reaches the workspace only through the OTLP HTTP exporter in the Python templates.
+  - package: protobuf
+    licence: BSD-3-Clause
+    adr: ADR-0003
+    scope: templates/golden-paths/python (unmodified transitive dependency of the OTLP exporter; no SPDX metadata upstream)
     approved_by: Kone Tshivhinda (Qoder)
     review_by: 2027-04-30
 

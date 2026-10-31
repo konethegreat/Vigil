@@ -18,7 +18,8 @@ class Settings(BaseSettings):
 
     service_name: str = Field(default="vigil-service-template", min_length=1, max_length=64)
     environment: Literal["dev", "test", "staging", "production"] = "dev"
-    host: str = Field(default="0.0.0.0", min_length=1)  # noqa: S104 - containers bind all interfaces
+    # Loopback by default: binding every interface is an explicit deployment decision.
+    host: str = Field(default="127.0.0.1", min_length=1)
     port: int = Field(default=8000, ge=1, le=65535)
     log_level: Literal["INFO", "WARNING", "ERROR"] = "INFO"
     warden_url: str = Field(min_length=1)

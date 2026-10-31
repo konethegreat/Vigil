@@ -18,6 +18,7 @@ def test_valid_configuration_is_accepted() -> None:
     loaded = settings()
     assert loaded.service_name == "vigil-service-template"
     assert loaded.environment == "dev"
+    assert loaded.host == "127.0.0.1"
     assert loaded.port == 8000
 
 

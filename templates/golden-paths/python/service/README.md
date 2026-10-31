@@ -36,6 +36,7 @@ fail-closed dependency is unavailable (BACKEND_GUIDE §9.4, B4).
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | No | Leave unset for no egress; point it at the in-boundary collector |
 | `VIGIL_ENVIRONMENT` | No | `dev` (default), `test`, `staging` or `production` |
 | `VIGIL_SERVICE_NAME` | No | Defaults to `vigil-service-template`; rename when copying |
+| `VIGIL_HOST` | No | Defaults to `127.0.0.1`; set `0.0.0.0` only inside a container network |
 | `VIGIL_PORT` | No | Defaults to 8000 |
 
 Invalid configuration stops the process. `.env.example` shows the shape; it
