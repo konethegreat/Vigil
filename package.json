@@ -10,6 +10,6 @@
     "typecheck": "pnpm --dir apps/cockpit typecheck"
   },
   "devDependencies": {
-    "prettier": "3.9.9"
+    "prettier": "3.9.10"
   }
 }

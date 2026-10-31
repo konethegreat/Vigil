@@ -18,6 +18,7 @@
 #   secrets.COSIGN_PRIVATE_KEY, secrets.COSIGN_PASSWORD    key-based signing: Kyverno verifies offline,
 #                                                          nothing goes to a public transparency log
 #   vars.TOFU_DEV_ENABLED = "true"                         set only once `dev` has required reviewers
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 name: deploy
 
 on:
@@ -112,7 +113,7 @@ jobs:
         if: env.PUSH != 'true'
         run: echo "::notice::Registry not configured, so $NAME was built but not pushed, signed or attested."
 
-      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         if: env.SIGN == 'true'
         with:
           cosign-release: v2.5.2
@@ -167,7 +168,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: image-*
           merge-multiple: true

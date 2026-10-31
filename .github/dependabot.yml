@@ -1,5 +1,6 @@
 # Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — Dependabot automated vulnerability & dependency updates
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Point npm at the pnpm workspace root, use the uv ecosystem, group minor updates
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Ignore pending majors until the toolchain supports them
 #
 # Dependabot PRs are advisory: INSTRUCTIONS §12 requires a WORKLOG row and §8 an attribution line per
 # change, which the bot cannot add, so maintainers port each batch into a governed `chore/repo` branch.
@@ -26,6 +27,16 @@ updates:
     commit-message:
       prefix: "chore(repo)"
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint declares <6.1.0; revisit when it accepts TypeScript 7.
+      - dependency-name: "typescript"
+        versions: ["7.x", ">=7.0.0"]
+      # The Next.js lint plugins declare ESLint <=9.
+      - dependency-name: "eslint"
+        versions: ["10.x", ">=10.0.0"]
+      # CI runs Node 24 LTS; move together with the runtime.
+      - dependency-name: "@types/node"
+        versions: ["26.x", ">=26.0.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
@@ -50,6 +61,10 @@ updates:
     commit-message:
       prefix: "chore(repo)"
     open-pull-requests-limit: 5
+    ignore:
+      # Spotless 8 drops formatter dependencies from gradle.lockfile, reducing SBOM coverage.
+      - dependency-name: "com.diffplug.spotless"
+        versions: [">=8.0.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]

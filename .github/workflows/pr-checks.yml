@@ -9,6 +9,7 @@
 #   forbidden/untracked files . docs/engineers/*, .env*, node_modules/ … and anything .gitignore excludes
 #   attribution headers ....... INSTRUCTIONS §8
 # Local equivalent: `just act-pr`, or `python scripts/validate-compliance.py --ci --base develop`.
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 name: pr-checks
 
 on:
@@ -36,7 +37,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
 
