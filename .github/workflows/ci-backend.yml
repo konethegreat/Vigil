@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Polyglot backend CI: path-filtered Python, Java, Rust, Go, Kotlin/Android, Elixir and Protobuf gates that no-op until each project exists (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Activate the Python job for services/mind
 #
 # Skill §3 ci-backend, generalised to the ADR-0001 language charter. A language job runs only when
 # (a) its paths changed and (b) its project entrypoint exists, so the workflow stays green and
@@ -121,7 +122,7 @@ jobs:
             echo "$name: changed=$changed run=$run"
           }
           has_go_module() { git ls-files -- 'go.mod' '*/go.mod' | grep -q .; }
-          decide python  "$F_PYTHON"  test -f pyproject.toml
+          decide python  "$F_PYTHON"  test -f services/mind/pyproject.toml
           decide java    "$F_JAVA"    test -f gradlew
           decide rust    "$F_RUST"    test -f Cargo.toml
           decide go      "$F_GO"      has_go_module
@@ -135,6 +136,9 @@ jobs:
     if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: services/mind
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -192,9 +196,20 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5; also validates the committed Gradle wrapper
+      - name: Start disposable test database and Mind
+        run: docker compose -f docker-compose.dev.yml --profile checks up -d --wait test-db mind-test
       - name: Gradle spotlessCheck · check · test
         timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        env:
+          DATABASE_URL: jdbc:postgresql://127.0.0.1:5548/vigil
+          VIGIL_DEMO_MODE: "true"
+          VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
+          VIGIL_SESSION_KEY: local-synthetic-session-key-not-for-production
+          VIGIL_MIND_URL: http://127.0.0.1:8017
         run: ./gradlew --no-daemon spotlessCheck check test
+      - name: Remove disposable test database and Mind
+        if: always()
+        run: docker compose -f docker-compose.dev.yml --profile checks down -v
 
   rust:
     name: rust

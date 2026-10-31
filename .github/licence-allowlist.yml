@@ -18,11 +18,29 @@
 #   4. ODbL data stays in separate databases.
 #   A red licence needs a purchased commercial licence and a superseding ADR, not an entry here.
 #
-# Entry format (`package` must equal the SBOM package name; the other fields are the audit trail):
+# Entry format (`package` is an exact SBOM package name or an fnmatch pattern; the other fields are
+# the audit trail):
 #   - package: ghostscript
 #     licence: AGPL-3.0-only
 #     adr: ADR-0012
 #     scope: services/mind/docai (unmodified separate process)
 #     approved_by: <Name> (<AI model>)
 #     review_by: 2027-03-31   # ADR-0003: top dependencies are re-reviewed every six months
-allowlist: []
+allowlist:
+  # ADR-0003: LGPL may be linked dynamically and used unmodified, with notices. sharp ships an
+  # unmodified libvips binary for every platform; only the target platform's binary is installed.
+  - package: "@img/sharp-*"
+    licence: Apache-2.0 / LGPL-3.0-or-later
+    adr: ADR-0003
+    scope: apps/cockpit (unmodified dynamically linked libvips; notice in ATTRIBUTION.md)
+    approved_by: Kone Tshivhinda (Qoder)
+    review_by: 2027-04-30
+  # PyPI publishes only an OSI classifier for colorama; its LICENSE.txt is BSD-3-Clause. The gate
+  # records this as allow-listed rather than inventing SPDX data from an ambiguous classifier.
+  - package: colorama
+    licence: BSD-3-Clause
+    adr: ADR-0003
+    scope: services/mind (unmodified transitive dependency; no SPDX metadata upstream)
+    approved_by: Kone Tshivhinda (Qoder)
+    review_by: 2027-04-30
+

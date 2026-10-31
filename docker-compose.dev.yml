@@ -3,6 +3,7 @@
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Forward investigation migration
 name: vigil-mission
 # Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction migration
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Expose the disposable test database to CI
 services:
   cockpit:
     profiles: [full]
@@ -74,6 +75,7 @@ services:
       POSTGRES_DB: vigil
       POSTGRES_USER: vigil_admin
       POSTGRES_PASSWORD: vigil_admin_local_only
+    ports: ["127.0.0.1:5548:5432"]
     tmpfs: [/var/lib/postgresql]
     volumes:
       - ./infra/docker/mission-db/init.sql:/docker-entrypoint-initdb.d/001.sql:ro
@@ -105,6 +107,7 @@ services:
   mind-test:
     profiles: [checks]
     build: ./services/mind
+    ports: ["127.0.0.1:8017:8000"]
     environment:
       VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
       VIGIL_REASONER_MODEL: ""

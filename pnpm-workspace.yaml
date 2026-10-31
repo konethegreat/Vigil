@@ -1,6 +1,10 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Vigil workspaces
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Pin patched transitive packages
 packages:
   - apps/*
 allowBuilds:
   unrs-resolver: true
+overrides:
+  sharp: 0.35.5
+  source-map-js: 1.2.2

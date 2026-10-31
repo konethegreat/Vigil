@@ -1,4 +1,5 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Quoted source proposals
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-28 — Serialize model input
 import hashlib
 import html
 from typing import Annotated, Literal
@@ -8,6 +9,7 @@ from pydantic import Field, model_validator
 
 from .contracts import Challenge, StrictModel
 from .planner import Planner
+from .prompt_content import untrusted_element
 
 Key = Annotated[str, Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")]
 Quote = Annotated[str, Field(min_length=3, max_length=400)]
@@ -95,10 +97,8 @@ class Proposal(StrictModel):
 async def extract(planner: Planner, request: ExtractRequest) -> dict:
     if not planner.reasoner:
         raise ValueError("No local reasoning model configured")
-    content = (
-        f'<untrusted_content source="mission-evidence" sha256="{request.sha256}">'
-        + html.escape(request.original)
-        + "</untrusted_content>"
+    content = untrusted_element(
+        "untrusted_content", request.original, source="mission-evidence", sha256=request.sha256
     )
     raw = await planner.call_model(
         planner.reasoner,

@@ -1,9 +1,10 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Java mission runtime
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Spring Boot 4.0.9 security patch
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "4.0.8"
+    id("org.springframework.boot") version "4.0.9"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "7.2.1"
 }
