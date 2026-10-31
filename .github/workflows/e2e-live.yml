@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Live end-to-end suite: Postgres (PostGIS + pgvector), Valkey, core and cockpit when present, Playwright in tests/e2e (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins
 #
 # Skill §3 e2e-live: runs on PRs labelled `run-e2e` and on every push to main. It reuses the local CI
 # harness (docker-compose.ci.yml), so the database image is the same one engineers test against.
@@ -38,7 +39,7 @@ jobs:
       CORE_URL: http://localhost:8080
       BASE_URL: http://localhost:3000
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -66,7 +67,7 @@ jobs:
         if: hashFiles('tests/e2e/package.json') != ''
         with:
           package_json_file: ${{ hashFiles('package.json') != '' && 'package.json' || 'tests/e2e/package.json' }}
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: hashFiles('tests/e2e/package.json') != ''
         with:
           node-version: "24"
