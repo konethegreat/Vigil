@@ -19,6 +19,7 @@
 #                                                          nothing goes to a public transparency log
 #   vars.TOFU_DEV_ENABLED = "true"                         set only once `dev` has required reviewers
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (third batch)
 name: deploy
 
 on:
@@ -154,7 +155,7 @@ jobs:
         run: |
           jq -n --arg name "$NAME" --arg image "$IMAGE" --arg digest "$DIGEST" --arg signed "$SIGN" \
             '{name: $name, image: $image, digest: $digest, signed: ($signed == "true")}' > "image-${NAME}.json"
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: env.PUSH == 'true'
         with:
           name: image-${{ matrix.image.name }}
@@ -180,7 +181,7 @@ jobs:
             '{apiVersion: "relay.vigil/v0alpha1", kind: "Release", channel: "dev", created: $created,
               source: {repository: $repo, commit: $commit}, products: .}' images/*.json > relay-release-dev.json
           cat relay-release-dev.json
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: relay-release-dev
           path: relay-release-dev.json

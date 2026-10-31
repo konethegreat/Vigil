@@ -6,6 +6,7 @@
 # Core and cockpit start only once their Dockerfiles exist (P5/P10); Playwright runs once
 # tests/e2e exists (P33). Hard cap: 10 minutes (skill §4.3). Required on main: e2e-live.
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (third batch)
 name: e2e-live
 
 on:
@@ -89,7 +90,7 @@ jobs:
 
       - name: Upload the Playwright report
         if: failure() && hashFiles('tests/e2e/playwright-report/**') != ''
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
           path: tests/e2e/playwright-report
