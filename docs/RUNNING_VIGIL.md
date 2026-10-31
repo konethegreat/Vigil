@@ -1,6 +1,7 @@
 <!-- Written by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 — Mission environment runbook -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation workflow and forward migration -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 - Source intake, extraction and review -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - P1 platform services and dev-up -->
 
 # Running Vigil locally
 
@@ -9,7 +10,14 @@
 Run Docker Desktop with Linux containers. From the repository root:
 
 ```powershell
-docker compose -f docker-compose.dev.yml --profile full up -d --build
+just dev-up          # mission services plus the platform profile
+just dev-up-full     # the above plus the Cockpit demo UI
+```
+
+`just dev-up-full` is equivalent to:
+
+```powershell
+docker compose -f docker-compose.dev.yml --profile full --profile platform up -d --build
 ```
 
 Open http://127.0.0.1:3100. Ports 3100, 8087, 8017 and 5547 must be free. Every published port binds to `127.0.0.1`. Other projects' Docker services are unaffected: this environment is named `vigil-mission`.
@@ -21,9 +29,31 @@ Open http://127.0.0.1:3100. Ports 3100, 8087, 8017 and 5547 must be free. Every 
 | Mind          | Python / FastAPI bounded analysis                                | http://127.0.0.1:8017/health        |
 | PostgreSQL 18 | Missions, original evidence, commands, audit and access receipts | 127.0.0.1:5547                      |
 
+The PostgreSQL image is built from `infra/docker/postgres` and carries PostGIS and pgvector, so local development matches the CI database.
+
 The browser holds a signed demonstration session in an HttpOnly, SameSite Strict cookie. It never receives the internal service token. Core derives tenant and purpose from the signed identity, checks operation policy and scopes transactions through PostgreSQL row-level security. All seven seed missions and all personas are fictional. The public local credentials in Compose are deliberately throwaway; this profile is for synthetic records.
 
 Use the workspace selector to explore District operations, Protection services, and Independent review. Independent review sees operations records but cannot mutate them. The protection workspace contains only its own missions.
+
+## Platform services
+
+The `platform` profile starts the supporting components that later phases consume. It is synthetic-only and uses throwaway credentials; never point it at real data.
+
+| Component       | Purpose                                    | Local address                                                       | Credentials                                |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------ |
+| Valkey 9        | Sessions, rate limits, object-set cache    | `127.0.0.1:6381`                                                    | none                                       |
+| Kafka 4 (KRaft) | Core durable event log                     | `127.0.0.1:9094` (external listener)                                | none                                       |
+| NATS 2          | Edge/control messaging with JetStream      | `127.0.0.1:4222`, monitoring `8222`                                 | none                                       |
+| OpenSearch 3    | Full-text search and filters               | http://127.0.0.1:9200                                              | security plugin disabled (synthetic only)  |
+| SeaweedFS 4     | S3-compatible object store                 | http://127.0.0.1:8333 (S3), `9333` (master), `8888` (filer)        | none                                       |
+| Polaris 1       | Iceberg REST catalog                       | http://127.0.0.1:8181 (API), http://127.0.0.1:8182 (health)        | `root` / `local-synthetic-root-secret`     |
+| Keycloak 26     | OIDC identity                              | http://127.0.0.1:8081                                              | `vigil-admin` / `local-synthetic-admin-only` |
+| OpenFGA 1       | ReBAC authorisation                        | http://127.0.0.1:8082 (HTTP), `8083` (gRPC)                        | none; in-memory store                      |
+| Temporal 1      | Action sagas and approvals                 | `127.0.0.1:7233`, UI http://127.0.0.1:8233                         | none                                       |
+| OpenBao 2       | Dev KMS                                    | http://127.0.0.1:8200                                              | root token `local-synthetic-root-token`    |
+| ClickHouse 26   | Telemetry and audit analytics              | http://127.0.0.1:8123, native `9000`                                | `default`, no password                     |
+
+`docker compose -f docker-compose.dev.yml --profile platform ps` shows the state and `just dev-down` stops the project. Data lives in named volumes, except Keycloak, OpenFGA, Polaris and OpenBao, which restart empty on purpose. Images use exact patch tags; digest pinning and the Harbor mirror arrive with P1 task 1.6 and P20.
 
 ## First mission journey
 
