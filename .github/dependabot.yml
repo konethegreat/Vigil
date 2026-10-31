@@ -1,11 +1,13 @@
 # Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — Dependabot automated vulnerability & dependency updates
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Point npm at the pnpm workspace root, use the uv ecosystem, group minor updates
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Ignore pending majors until the toolchain supports them
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Watch Dockerfiles in their actual directories, not the repository root
 #
 # Dependabot PRs are advisory: INSTRUCTIONS §12 requires a WORKLOG row and §8 an attribution line per
 # change, which the bot cannot add, so maintainers port each batch into a governed `chore/repo` branch.
 # The lockfiles must be updated by the ecosystem itself (`pnpm`, `uv`, Gradle), which is why npm points at
-# the workspace root and Python uses the uv ecosystem rather than pip.
+# the workspace root and Python uses the uv ecosystem rather than pip. Each Docker ecosystem entry
+# names a directory that really contains a Dockerfile, because the updater scans only that directory.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
@@ -71,12 +73,56 @@ updates:
         update-types: ["minor", "patch"]
 
   - package-ecosystem: "docker"
-    directory: "/"
+    directory: "/apps/cockpit"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "ci(repo)"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "docker"
+    directory: "/services/core"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(repo)"
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "docker"
+    directory: "/services/mind"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(repo)"
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "docker"
+    directory: "/infra/docker/ci"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(repo)"
+    open-pull-requests-limit: 2
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "docker"
+    directory: "/infra/docker/postgres"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(repo)"
+    open-pull-requests-limit: 2
     groups:
       minor-and-patch:
         patterns: ["*"]
