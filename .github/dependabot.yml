@@ -38,7 +38,7 @@ updates:
         versions: ["10.x", ">=10.0.0"]
       # CI runs Node 24 LTS; move together with the runtime.
       - dependency-name: "@types/node"
-        versions: ["26.x", ">=26.0.0"]
+        versions: ["25.x", ">=25.0.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
