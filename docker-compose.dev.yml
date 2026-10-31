@@ -1,10 +1,16 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Local synthetic mission environment
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Forward investigation migration
-name: vigil-mission
 # Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction migration
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Connected operations migration
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Expose the disposable test database to CI
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — P1 task 1.3 platform profile: PostGIS/pgvector DB, Valkey, Kafka, NATS, OpenSearch, SeaweedFS, Polaris, Keycloak, OpenFGA, Temporal, OpenBao, ClickHouse
+#
+# Every published port binds to 127.0.0.1. All credentials below are synthetic and local-only
+# (INSTRUCTIONS §9.2); nothing in this file may be reused outside the vigil-mission project.
+# Mission services (db, mind, core, migrate, cockpit) start by default or with --profile full.
+# The platform services start with --profile platform (just dev-up does this).
+name: vigil-mission
 services:
   cockpit:
     profiles: [full]
@@ -19,7 +25,9 @@ services:
     depends_on:
       core: {condition: service_started}
   db:
-    image: postgres:18-alpine
+    build:
+      context: infra/docker/postgres
+    image: vigil-dev/postgres:18
     environment:
       POSTGRES_DB: vigil
       POSTGRES_USER: vigil_admin
@@ -27,13 +35,13 @@ services:
     ports: ["127.0.0.1:5547:5432"]
     volumes:
       - mission-db:/var/lib/postgresql
-      - ./infra/docker/mission-db/init.sql:/docker-entrypoint-initdb.d/001.sql:ro
-      - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/002.sql:ro
-      - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/003.sql:ro
-      - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
-      - ./infra/docker/mission-db/coordination.sql:/docker-entrypoint-initdb.d/005.sql:ro
+      - ./infra/docker/mission-db/init.sql:/docker-entrypoint-initdb.d/101.sql:ro
+      - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/102.sql:ro
+      - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/103.sql:ro
+      - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/104.sql:ro
+      - ./infra/docker/mission-db/coordination.sql:/docker-entrypoint-initdb.d/105.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U vigil_admin -d vigil"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -67,7 +75,9 @@ services:
       PGPASSWORD: vigil_admin_local_only
     volumes:
       - ./infra/docker/mission-db:/migrations:ro
-    command: ["psql", "-h", "db", "-U", "vigil_admin", "-d", "vigil", "-v", "ON_ERROR_STOP=1", "-f", "/migrations/access.sql", "-f", "/migrations/investigation.sql", "-f", "/migrations/extraction.sql", "-f", "/migrations/coordination.sql"]
+    # The extensions come from the owned db image; create them here as well so an existing
+    # mission-db volume initialised before the image change still gains them.
+    command: ["psql", "-h", "db", "-U", "vigil_admin", "-d", "vigil", "-v", "ON_ERROR_STOP=1", "-c", "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS vector;", "-f", "/migrations/access.sql", "-f", "/migrations/investigation.sql", "-f", "/migrations/extraction.sql", "-f", "/migrations/coordination.sql"]
     depends_on:
       db: {condition: service_healthy}
   test-db:
@@ -86,12 +96,12 @@ services:
       - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
       - ./infra/docker/mission-db/coordination.sql:/docker-entrypoint-initdb.d/005.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U vigil_admin -d vigil"]
       interval: 2s
       timeout: 3s
       retries: 20
   core-test:
-    image: gradle:9.1.0-jdk25
+    image: gradle:9.8.2-jdk25
     profiles: [checks]
     working_dir: /workspace
     environment:
@@ -115,6 +125,189 @@ services:
       VIGIL_INTERNAL_TOKEN: local-synthetic-mission-only
       VIGIL_REASONER_MODEL: ""
       VIGIL_CHALLENGER_MODEL: ""
+  # ── Platform services (P1 task 1.3). Profile: platform. ──────────────────────────────
+  # Heaps and mem_limit values keep the whole stack inside an 8 GB development host.
+  valkey:
+    profiles: [platform]
+    image: valkey/valkey:9.1.3-alpine
+    mem_limit: 256m
+    command: ["valkey-server", "--appendonly", "yes", "--maxmemory", "192mb", "--maxmemory-policy", "allkeys-lru"]
+    ports: ["127.0.0.1:6381:6379"]
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  kafka:
+    profiles: [platform]
+    image: apache/kafka:4.4.0
+    mem_limit: 1g
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      # EXTERNAL is advertised for host tools (127.0.0.1:9094); INTERNAL is used between containers.
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://127.0.0.1:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+    ports: ["127.0.0.1:9094:9094"]
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --list > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+  nats:
+    profiles: [platform]
+    image: nats:2.15.2-alpine
+    mem_limit: 256m
+    command: ["-js", "-m", "8222", "--store_dir", "/data"]
+    ports: ["127.0.0.1:4222:4222", "127.0.0.1:8222:8222"]
+    volumes:
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz > /dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  opensearch:
+    profiles: [platform]
+    image: opensearchproject/opensearch:3.9.0
+    mem_limit: 1g
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "false"
+      DISABLE_SECURITY_PLUGIN: "true" # local synthetic data only; DLS/FLS is exercised in CI and P3
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["127.0.0.1:9200:9200"]
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200/_cluster/health > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+  seaweedfs:
+    profiles: [platform]
+    image: chrislusf/seaweedfs:4.51
+    mem_limit: 512m
+    command: ["server", "-dir=/data", "-s3", "-ip=seaweedfs", "-master.volumeSizeLimitMB=1024"]
+    ports: ["127.0.0.1:8333:8333", "127.0.0.1:8888:8888", "127.0.0.1:9333:9333"]
+    volumes:
+      - seaweedfs-data:/data
+  polaris:
+    profiles: [platform]
+    image: apache/polaris:1.8.0
+    mem_limit: 768m
+    environment:
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,local-synthetic-root-secret
+      JAVA_OPTS: -Xms256m -Xmx512m
+    ports: ["127.0.0.1:8181:8181", "127.0.0.1:8182:8182"]
+    depends_on:
+      seaweedfs: {condition: service_started}
+  keycloak:
+    profiles: [platform]
+    image: quay.io/keycloak/keycloak:26.8.1
+    mem_limit: 768m
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: vigil-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: local-synthetic-admin-only
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      JAVA_OPTS_APPEND: -Xms256m -Xmx512m
+    ports: ["127.0.0.1:8081:8080", "127.0.0.1:9001:9000"]
+  openfga:
+    profiles: [platform]
+    image: openfga/openfga:v1.22.1
+    mem_limit: 256m
+    # In-memory store: relationship tuples are rebuilt from deploy/identity at P3.
+    command: ["run", "--datastore-engine=memory", "--http-addr=0.0.0.0:8080", "--grpc-addr=0.0.0.0:8081", "--playground-enabled=false"]
+    ports: ["127.0.0.1:8082:8080", "127.0.0.1:8083:8081"]
+  temporal-init:
+    profiles: [platform]
+    image: postgres:18-alpine
+    mem_limit: 128m
+    environment:
+      PGPASSWORD: vigil_admin_local_only
+    command: ["sh", "-c", "psql -h db -U vigil_admin -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname = 'temporal'\" | grep -q 1 || psql -h db -U vigil_admin -d postgres -c 'CREATE DATABASE temporal'"]
+    depends_on:
+      db: {condition: service_healthy}
+  temporal:
+    profiles: [platform]
+    image: temporalio/auto-setup:1.29.7
+    mem_limit: 512m
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: db
+      POSTGRES_USER: vigil_admin
+      POSTGRES_PWD: vigil_admin_local_only
+    ports: ["127.0.0.1:7233:7233"]
+    depends_on:
+      db: {condition: service_healthy}
+      temporal-init: {condition: service_completed_successfully}
+  temporal-ui:
+    profiles: [platform]
+    image: temporalio/ui:2.57.0
+    mem_limit: 128m
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://127.0.0.1:8233
+    ports: ["127.0.0.1:8233:8080"]
+    depends_on:
+      temporal: {condition: service_started}
+  openbao:
+    profiles: [platform]
+    image: openbao/openbao:2.7.2
+    mem_limit: 256m
+    # Dev KMS: in-memory storage, unsealed, fixed root token. Never a production configuration.
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-dev-root-token-id=local-synthetic-root-token"]
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200
+    ports: ["127.0.0.1:8200:8200"]
+    healthcheck:
+      test: ["CMD", "bao", "status"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+  clickhouse:
+    profiles: [platform]
+    image: clickhouse/clickhouse-server:26.8.36.3-alpine
+    mem_limit: 1g
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+      CLICKHOUSE_DB: vigil_telemetry
+    ports: ["127.0.0.1:8123:8123", "127.0.0.1:9000:9000"]
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile: {soft: 262144, hard: 262144}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 volumes:
   mission-db:
   mission-gradle:
+  valkey-data:
+  kafka-data:
+  nats-data:
+  opensearch-data:
+  seaweedfs-data:
+  clickhouse-data:

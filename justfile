@@ -60,15 +60,19 @@ act-backend:
 act-frontend:
     act pull_request -W .github/workflows/ci-frontend.yml {{ act_platform }}
 
-# Start the local dev stack (docker-compose.dev.yml arrives in P1 task 1.3).
+# Start the local dev stack: mission services plus the platform profile (P1 task 1.3).
 dev-up:
     #!/usr/bin/env bash
     set -euo pipefail
     if [ ! -f docker-compose.dev.yml ]; then
-      echo "docker-compose.dev.yml does not exist yet: the local dev stack is P1 task 1.3." >&2
+      echo "docker-compose.dev.yml is missing; restore it from version control." >&2
       exit 1
     fi
-    docker compose -f docker-compose.dev.yml up -d
+    docker compose -f docker-compose.dev.yml --profile platform up -d
+
+# Start everything, including the Cockpit demo UI (profiles full + platform).
+dev-up-full:
+    docker compose -f docker-compose.dev.yml --profile full --profile platform up -d
 
 # Stop the local dev stack.
 dev-down:
