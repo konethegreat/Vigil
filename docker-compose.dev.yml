@@ -3,6 +3,7 @@
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Forward investigation migration
 name: vigil-mission
 # Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction migration
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Connected operations migration
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Expose the disposable test database to CI
 services:
   cockpit:
@@ -30,6 +31,7 @@ services:
       - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/002.sql:ro
       - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/003.sql:ro
       - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
+      - ./infra/docker/mission-db/coordination.sql:/docker-entrypoint-initdb.d/005.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
       interval: 3s
@@ -65,7 +67,7 @@ services:
       PGPASSWORD: vigil_admin_local_only
     volumes:
       - ./infra/docker/mission-db:/migrations:ro
-    command: ["psql", "-h", "db", "-U", "vigil_admin", "-d", "vigil", "-v", "ON_ERROR_STOP=1", "-f", "/migrations/access.sql", "-f", "/migrations/investigation.sql", "-f", "/migrations/extraction.sql"]
+    command: ["psql", "-h", "db", "-U", "vigil_admin", "-d", "vigil", "-v", "ON_ERROR_STOP=1", "-f", "/migrations/access.sql", "-f", "/migrations/investigation.sql", "-f", "/migrations/extraction.sql", "-f", "/migrations/coordination.sql"]
     depends_on:
       db: {condition: service_healthy}
   test-db:
@@ -82,6 +84,7 @@ services:
       - ./infra/docker/mission-db/access.sql:/docker-entrypoint-initdb.d/002.sql:ro
       - ./infra/docker/mission-db/investigation.sql:/docker-entrypoint-initdb.d/003.sql:ro
       - ./infra/docker/mission-db/extraction.sql:/docker-entrypoint-initdb.d/004.sql:ro
+      - ./infra/docker/mission-db/coordination.sql:/docker-entrypoint-initdb.d/005.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vigil_admin -d vigil"]
       interval: 2s

@@ -2,6 +2,7 @@
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation increment scope and acceptance -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Close P0 after the governance bootstrap merge -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Record the connected operations integration -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -1059,3 +1060,7 @@ The founder explicitly instructed implementation after the expanded concept revi
 ## Founder-directed observation and agency exchange — 2026-09-27
 
 **Status:** Design direction recorded; implementation pending. **Owner:** Kone Tshivhinda (OpenAI Codex GPT-6). **Scope:** [ADR-0012](adr/ADR-0012-connected-agency-operations.md) and [CONNECTED_OPERATIONS.md](CONNECTED_OPERATIONS.md). First demonstrate source capabilities, timed synthetic observations, explicit joint-case evidence release, receiving agency requests and acknowledgment/result records. Keep source custody and tenant boundaries, test late/duplicate events and unavailable coverage, and measure time to useful evidence and accepted responsibility. Live camera, toll and agency connections are not implemented by the current increments.
+
+## Founder-authorised connected operations increment 04 — 2026-09-27
+
+**Status:** Complete — implemented by Kone Tshivhinda (OpenAI Codex GPT-6), integrated through `feature/P18-connected-operations` on 2026-10-31. **Scope:** `contracts/COORDINATION.md`, ADR-0012, new Core coordination services/SQL/tests, Cockpit Observations/Agency inbox, local fixtures, acceptance and runbook updates. Founder explicitly approved the proposed incident-coordination workflow. Work alone; preserve existing workspaces and tenant boundaries. Verification criteria are in the contract; no complete platform phase is claimed. Integration verification: 50 Java integration tests, 30 Python tests, 26 Cockpit tests, lint, TypeScript, Prettier and the production build pass; Tomcat remains on the patched 11.0.27 from Spring Boot 4.0.9 rather than the branch's 11.0.26 override.

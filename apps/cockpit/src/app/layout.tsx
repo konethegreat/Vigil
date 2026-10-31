@@ -6,6 +6,8 @@ import "./globals.css";
 import "./investigations.css";
 // Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Source workbench
 import "./sources.css";
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Connected operations workspace styles
+import "./coordination.css";
 export const metadata: Metadata = {
   title: "Vigil — intelligence into operations",
   description:

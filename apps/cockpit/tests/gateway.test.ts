@@ -2,6 +2,7 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation gateway coverage
 import { afterEach, describe, expect, it, vi } from "vitest";
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Coordination route and session coverage
 // Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction gateway coverage
 import { NextRequest } from "next/server";
 vi.mock("server-only", () => ({}));
@@ -27,6 +28,59 @@ function request(
 }
 afterEach(() => vi.unstubAllGlobals());
 describe("cockpit gateway", () => {
+  it("allows bounded coordination paths and rejects arbitrary agency resources", async () => {
+    const fetcher = vi
+      .fn()
+      .mockImplementation(async () => Response.json({ cases: [] }));
+    vi.stubGlobal("fetch", fetcher);
+    const cookie = { cookie: "vigil_demo_session=server-signed-token" };
+    for (const path of [
+      "coordination/workspace",
+      "coordination/cases/CASE-abc/export",
+      "coordination/search",
+      "coordination/sources/CAP-abc/status",
+      "coordination/requests/REQ-abc/commands",
+    ]) {
+      const response =
+        path.endsWith("workspace") || path.endsWith("export")
+          ? await GET(request(path, undefined, cookie), context(path))
+          : await POST(
+              request(path, { note: "synthetic request" }, cookie),
+              context(path),
+            );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      if (path.endsWith("export"))
+        expect(response.headers.get("content-disposition")).toContain(
+          "CASE-abc-synthetic-record.json",
+        );
+    }
+    for (const path of [
+      "coordination/all-tenants",
+      "coordination/cases/CASE-abc/packets",
+      "coordination/requests/other/commands",
+    ])
+      expect((await GET(request(path), context(path))).status).toBe(404);
+    expect(fetcher).toHaveBeenCalledTimes(5);
+  });
+  it("issues regional synthetic sessions through the same HttpOnly boundary", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          token: "signed-test-token",
+          identity: { actor: "limpopo" },
+        }),
+      ),
+    );
+    const response = await POST(
+      request("session", { actor: "limpopo" }),
+      context("session"),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(await response.json()).toEqual({ identity: { actor: "limpopo" } });
+  });
   it("permits scoped source reviews and rejects arbitrary extraction paths", async () => {
     const fetcher = vi
       .fn()
