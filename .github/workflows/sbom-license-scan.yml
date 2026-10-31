@@ -1,5 +1,6 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Syft SPDX SBOM (uploaded as an artifact) and the ADR-0003 licence policy gate (P0)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Use Syft's per-ecosystem network licence lookup
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Ignore non-coordinate Maven purls from Gradle lockfile headers
 #
 # Skill §3 sbom-license-scan; ADR-0003 "Controls": block red licences, and amber licences without
 # an entry in .github/licence-allowlist.yml, on every PR. Required status check: sbom-license-scan.
@@ -175,15 +176,30 @@ jobs:
               return None
 
 
-          def pom_expression(purl):
-              """Read the declared licence, following up to three parent POMs when inherited."""
+          def maven_coordinates(purl):
+              """(group, artifact, version) for a well-formed Maven purl, else None.
+
+              Syft also turns a Gradle lockfile's header comment into a bogus Maven purl, so
+              anything that is not a plain coordinate must be ignored rather than failed.
+              """
               if not purl.startswith("pkg:maven/"):
                   return None
-              coordinates = unquote(purl.removeprefix("pkg:maven/")).split("@", 1)
-              if len(coordinates) != 2 or "/" not in coordinates[0]:
+              body = unquote(purl.removeprefix("pkg:maven/")).split("?", 1)[0].split("#", 1)[0]
+              coordinates, _, version = body.partition("@")
+              group, _, artifact = coordinates.partition("/")
+              if not version or not group or not artifact:
                   return None
-              group, artifact = coordinates[0].split("/", 1)
-              version = coordinates[1].split("?", 1)[0].split("#", 1)[0]
+              if not all(SAFE_COORDINATE.fullmatch(part) for part in (group, artifact, version)):
+                  return None
+              return group, artifact, version
+
+
+          def pom_expression(purl):
+              """Read the declared licence, following up to three parent POMs when inherited."""
+              coordinates = maven_coordinates(purl)
+              if coordinates is None:
+                  return None
+              group, artifact, version = coordinates
               seen = set()
               for _ in range(4):
                   if (group, artifact, version) in seen:
@@ -324,7 +340,18 @@ jobs:
           for pkg in packages:
               expressions = [pkg.get(key) for key in ("licenseConcluded", "licenseDeclared")]
               expressions = [e for e in expressions if e and e not in ("NOASSERTION", "NONE")]
-              purls = [r.get("referenceLocator", "") for r in pkg.get("externalRefs", [])]
+              refs = [
+                  r.get("referenceLocator", "")
+                  for r in pkg.get("externalRefs", [])
+                  if r.get("referenceType") == "purl"
+              ]
+              malformed_maven = [
+                  p for p in refs
+                  if p.startswith("pkg:maven/") and maven_coordinates(p) is None
+              ]
+              purls = [p for p in refs if p not in malformed_maven]
+              if not expressions and malformed_maven and not purls:
+                  continue  # Gradle's lockfile header comment, misread by Syft as a package
               if not expressions:
                   expression = next(
                       (resolved.get(p) for p in purls if resolved.get(p)), None
