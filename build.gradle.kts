@@ -2,10 +2,11 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 // Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Spring Boot 4.0.9 security patch
 // Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Force patched Guava in the formatter toolchain
+// Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Spring Boot 4.1.2 and JVM 25-compatible formatter
 plugins {
     java
     jacoco
-    id("org.springframework.boot") version "4.0.9"
+    id("org.springframework.boot") version "4.1.2"
     id("io.spring.dependency-management") version "1.1.7"
     id("com.diffplug.spotless") version "7.2.1"
 }
@@ -27,9 +28,9 @@ sourceSets {
 }
 dependencyLocking { lockAllConfigurations() }
 configurations.configureEach {
-    // google-java-format 1.28.0 pulls Guava 32.1.3 (CVE-2026-102554); 33.7.2 is binary compatible.
+    // google-java-format 1.30.0 pulls Guava 32.1.3 (CVE-2026-102554); 33.7.2 is binary compatible.
     resolutionStrategy.force("com.google.guava:guava:33.7.2-jre")
 }
 tasks.test { useJUnitPlatform(); finalizedBy(tasks.jacocoTestReport) }
 tasks.jacocoTestReport { dependsOn(tasks.test); reports { xml.required = true; html.required = true } }
-spotless { java { target("services/core/src/**/*.java"); googleJavaFormat("1.28.0") } }
+spotless { java { target("services/core/src/**/*.java"); googleJavaFormat("1.30.0") } }
