@@ -1,6 +1,7 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Master project plan: tiers, phases P0–P43, file ownership, conflict rules (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation increment scope and acceptance -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Close P0 after the governance bootstrap merge -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -82,7 +83,7 @@
 # Tier 1: Foundation (Sequential)
 
 ## P0: Governance Bootstrap & Founding Research
-**Status**: 🚀 In Progress — Kone Tshivhinda (Qoder) | Started: 2026-10-31 — D1–D12 signed off 2026-10-31 (MSG-043); closure pending PR #1 merge
+**Status**: ✅ Complete — Kone Tshivhinda (Qoder) | Started: 2026-09-25 | Closed: 2026-10-31 — D1–D12 signed off (MSG-043); governance bootstrap merged in PR #1 (MSG-044)
 **Depends On**: —
 **Blocks**: P1–P43
 **Complexity**: Medium
