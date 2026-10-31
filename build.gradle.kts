@@ -3,6 +3,7 @@
 // Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Spring Boot 4.0.9 security patch
 // Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Force patched Guava in the formatter toolchain
 // Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Spring Boot 4.1.2 and JVM 25-compatible formatter
+// Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Enforce the 85% JaCoCo line-coverage MUST gate (P1 task 1.7)
 plugins {
     java
     jacoco
@@ -33,4 +34,17 @@ configurations.configureEach {
 }
 tasks.test { useJUnitPlatform(); finalizedBy(tasks.jacocoTestReport) }
 tasks.jacocoTestReport { dependsOn(tasks.test); reports { xml.required = true; html.required = true } }
+tasks.jacocoTestCoverageVerification {
+    dependsOn(tasks.jacocoTestReport)
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.85".toBigDecimal()
+            }
+        }
+    }
+}
+tasks.check { dependsOn(tasks.jacocoTestCoverageVerification) }
 spotless { java { target("services/core/src/**/*.java"); googleJavaFormat("1.30.0") } }

@@ -2,7 +2,7 @@
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-28 — Serialize model input
 import hashlib
 import html
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 import httpx
 from pydantic import Field, model_validator
@@ -25,7 +25,7 @@ class ExtractRequest(StrictModel):
     sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
 
     @model_validator(mode="after")
-    def check_source(self):
+    def check_source(self) -> Self:
         if not self.original.strip() or "\x00" in self.original:
             raise ValueError("Source must contain text and cannot contain NUL")
         if hashlib.sha256(self.original.encode("utf-8")).hexdigest() != self.sha256:
@@ -67,7 +67,7 @@ class Proposal(StrictModel):
     gaps: list[Annotated[str, Field(min_length=3, max_length=500)]] = Field(max_length=5)
 
     @model_validator(mode="after")
-    def check_graph(self):
+    def check_graph(self) -> Self:
         objects = {item.id: item for item in self.objects}
         if len(objects) != len(self.objects) or len({x.id for x in self.links}) != len(self.links):
             raise ValueError("Duplicate proposal identifiers")
@@ -87,14 +87,15 @@ class Proposal(StrictModel):
             seen.add(key)
         return self
 
-    def check_quotes(self, original: str):
-        for item in [*self.objects, *self.links]:
+    def check_quotes(self, original: str) -> Self:
+        items: list[ObjectProposal | LinkProposal] = [*self.objects, *self.links]
+        for item in items:
             if not item.quote.strip() or item.quote not in original:
                 raise ValueError("Every proposal requires an exact source quotation")
         return self
 
 
-async def extract(planner: Planner, request: ExtractRequest) -> dict:
+async def extract(planner: Planner, request: ExtractRequest) -> dict[str, object]:
     if not planner.reasoner:
         raise ValueError("No local reasoning model configured")
     content = untrusted_element(
@@ -120,8 +121,8 @@ async def extract(planner: Planner, request: ExtractRequest) -> dict:
         output_tokens=1800,
     )
     proposal = Proposal.model_validate(raw).check_quotes(request.original)
-    review = {"state": "NOT_RUN", "model": None, "concerns": []}
-    warnings = []
+    review: dict[str, object] = {"state": "NOT_RUN", "model": None, "concerns": []}
+    warnings: list[str] = []
     if planner.challenger:
         # The challenger also has no tools; its concerns never publish or reject records.
         try:

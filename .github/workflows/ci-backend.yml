@@ -9,6 +9,7 @@
 # Local mirror: `just ci-backend` → scripts/ci/run-backend.sh. Bump versions together with
 # infra/docker/ci/Dockerfile.
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
 name: ci-backend
 
 on:
@@ -170,9 +171,13 @@ jobs:
         timeout-minutes: 3
         run: uv run ruff format --check .
 
-      - name: pytest (coverage ≥ 85 %)
+      - name: mypy --strict
         timeout-minutes: 3
-        run: uv run pytest --cov --cov-report=term-missing --cov-fail-under=85
+        run: uv run mypy --strict vigil_mind
+
+      - name: pytest (branch coverage ≥ 85 %)
+        timeout-minutes: 3
+        run: uv run pytest --cov=vigil_mind --cov-branch --cov-report=term-missing --cov-fail-under=85
 
       - name: 100 % coverage for connector and policy modules (skill §3)
         timeout-minutes: 3
@@ -234,9 +239,21 @@ jobs:
       - name: cargo clippy (warnings are errors)
         timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Install cargo-deny and cargo-llvm-cov (only when a Cargo workspace exists)
+        timeout-minutes: 10 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: |
+          cargo install cargo-deny --locked
+          rustup component add llvm-tools-preview
+          cargo install cargo-llvm-cov --locked
+      - name: cargo deny check
+        timeout-minutes: 3
+        run: cargo deny check
       - name: cargo test
         timeout-minutes: 15 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
         run: cargo test --workspace --locked
+      - name: cargo llvm-cov (lines ≥ 85 %)
+        timeout-minutes: 20 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
+        run: cargo llvm-cov --workspace --fail-under-lines 85
 
   go:
     name: go
@@ -274,14 +291,23 @@ jobs:
             echo "::endgroup::"
           done < <(git ls-files -- 'go.mod' '*/go.mod')
           exit "$status"
-      - name: go test ./... (every module)
-        timeout-minutes: 3
+      - name: go test -race (coverage ≥ 85 %, every module)
+        timeout-minutes: 10 # compile-inclusive step: recorded exception to the 3-minute rule (MSG-027)
         run: |
           status=0
           while IFS= read -r mod; do
             dir="$(dirname "$mod")"
-            echo "::group::go test $dir"
-            (cd "$dir" && go test ./...) || status=1
+            echo "::group::go test -race $dir"
+            profile="$(mktemp)"
+            if (cd "$dir" && go test ./... -race -covermode=atomic -coverprofile="$profile"); then
+              total="$(go tool cover -func="$profile" | awk '/^total:/ {gsub(/%/, "", $3); print $3}')"
+              echo "total coverage: ${total}%"
+              awk -v total="$total" 'BEGIN { exit (total + 0 < 85) }' \
+                || { echo "::error::$dir coverage ${total}% is below 85%"; status=1; }
+            else
+              status=1
+            fi
+            rm -f "$profile"
             echo "::endgroup::"
           done < <(git ls-files -- 'go.mod' '*/go.mod')
           exit "$status"

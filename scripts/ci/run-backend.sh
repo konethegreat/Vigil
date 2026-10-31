@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Local backend CI runner: the ci-backend.yml gates for every language whose project exists (P0)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — MODE=lint|test for the P1 `just lint` / `just test` surface
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
 #
 # Usage: [MODE=all|lint|test] scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto ...]
 # MODE defaults to all, which is what CI runs. lint selects formatters, linters and static checks;
@@ -74,10 +75,12 @@ find_sources() {
 
 python_gates() {
   local dir=""
+  local source_target="src"
   if [ -f pyproject.toml ]; then
     dir="."
   elif [ -f services/mind/pyproject.toml ]; then
     dir="services/mind" # the Mind service owns its uv project until a root workspace exists (P1)
+    source_target="vigil_mind"
   else
     record python SKIP "no pyproject.toml workspace and no services/mind/pyproject.toml"
     return 0
@@ -87,10 +90,13 @@ python_gates() {
   if want_lint; then
     gate python "ruff check ($dir)" in_dir "$dir" uv run ruff check . || true
     gate python "ruff format --check ($dir)" in_dir "$dir" uv run ruff format --check . || true
+    gate python "mypy --strict $source_target ($dir)" \
+      in_dir "$dir" uv run mypy --strict "$source_target" || true
   fi
   if want_test; then
-    gate python "pytest (coverage >= 85%, $dir)" \
-      in_dir "$dir" uv run pytest --cov --cov-report=term-missing --cov-fail-under=85 || true
+    gate python "pytest (branch coverage >= 85%, $dir)" \
+      in_dir "$dir" uv run pytest --cov="$source_target" --cov-branch \
+      --cov-report=term-missing --cov-fail-under=85 || true
     if [ -n "$(find_sources \( -path '*/connectors/*.py' -o -path '*/policy/*.py' \) | head -n 1)" ]; then
       gate python "100% coverage: connectors/ and policy/ ($dir)" \
         in_dir "$dir" uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100 || true
@@ -118,9 +124,15 @@ rust_gates() {
     gate rust "cargo fmt --check" cargo fmt --all --check || true
     gate rust "cargo clippy -D warnings" \
       cargo clippy --workspace --all-targets --locked -- -D warnings || true
+    cargo deny --version > /dev/null 2>&1 || cargo install cargo-deny --locked || true
+    gate rust "cargo deny check" cargo deny check || true
   fi
   if want_test; then
     gate rust "cargo test" cargo test --workspace --locked || true
+    rustup component add llvm-tools-preview || true
+    cargo llvm-cov --version > /dev/null 2>&1 || cargo install cargo-llvm-cov --locked || true
+    gate rust "cargo llvm-cov (lines >= 85%)" \
+      cargo llvm-cov --workspace --fail-under-lines 85 || true
   fi
 }
 
@@ -128,6 +140,20 @@ gofmt_clean() {
   local unformatted
   unformatted="$(find_sources -name '*.go' | tr '\n' '\0' | xargs -0 -r gofmt -l)"
   [ -z "$unformatted" ] || { printf 'gofmt -w needed for:\n%s\n' "$unformatted"; return 1; }
+}
+
+go_test_race_coverage() {
+  local profile total
+  profile="$(mktemp)"
+  if ! go test ./... -race -covermode=atomic -coverprofile="$profile"; then
+    rm -f "$profile"
+    return 1
+  fi
+  total="$(go tool cover -func="$profile" | awk '/^total:/ {gsub(/%/, "", $3); print $3}')"
+  rm -f "$profile"
+  [ -n "$total" ] || { echo "coverage total was not reported" >&2; return 1; }
+  echo "total coverage: ${total}%"
+  awk -v total="$total" 'BEGIN { exit (total + 0 < 85) }'
 }
 
 go_gates() {
@@ -148,7 +174,8 @@ go_gates() {
       gate go "golangci-lint ($dir)" in_dir "$dir" golangci-lint run ./... || true
     fi
     if want_test; then
-      gate go "go test ./... ($dir)" in_dir "$dir" go test ./... || true
+      gate go "go test -race ./... (coverage >= 85%, $dir)" \
+        in_dir "$dir" go_test_race_coverage || true
     fi
   done <<< "$modules"
 }
