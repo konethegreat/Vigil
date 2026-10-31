@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Local backend CI runner: the ci-backend.yml gates for every language whose project exists (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — MODE=lint|test for the P1 `just lint` / `just test` surface
 #
-# Usage: scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto ...]
+# Usage: [MODE=all|lint|test] scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto ...]
+# MODE defaults to all, which is what CI runs. lint selects formatters, linters and static checks;
+# test selects the test suites. The commands are the same in either mode, so `just lint` and
+# `just test` cannot drift from ci-backend.yml.
 # Runs inside docker-compose.ci.yml (ci-backend, ci-<language>) or on any machine with the toolchains.
 # A language is SKIPPED when its project does not exist yet, or (with a warning) when its toolchain
 # is not installed here; GitHub Actions still runs that gate. Exits 1 if any gate fails.
@@ -11,6 +15,17 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 : "${GOLANGCI_LINT_VERSION:=v2.14.0}" # keep in step with ci-backend.yml
+
+MODE="${MODE:-all}"
+case "$MODE" in
+  all | lint | test) ;;
+  *)
+    echo "unknown MODE '$MODE' (expected: all, lint, test)" >&2
+    exit 2
+    ;;
+esac
+want_lint() { [ "$MODE" != "test" ]; }
+want_test() { [ "$MODE" != "lint" ]; }
 
 SUMMARY=()
 FAILED=0
@@ -58,23 +73,39 @@ find_sources() {
 }
 
 python_gates() {
-  [ -f pyproject.toml ] || { record python SKIP "no pyproject.toml workspace yet (P1)"; return 0; }
+  local dir=""
+  if [ -f pyproject.toml ]; then
+    dir="."
+  elif [ -f services/mind/pyproject.toml ]; then
+    dir="services/mind" # the Mind service owns its uv project until a root workspace exists (P1)
+  else
+    record python SKIP "no pyproject.toml workspace and no services/mind/pyproject.toml"
+    return 0
+  fi
   have python uv || return 0
-  gate python "uv sync --locked" uv sync --locked --all-packages || return 0
-  gate python "ruff check" uv run ruff check . || true
-  gate python "ruff format --check" uv run ruff format --check . || true
-  gate python "pytest (coverage >= 85%)" \
-    uv run pytest --cov --cov-report=term-missing --cov-fail-under=85 || true
-  if [ -n "$(find_sources \( -path '*/connectors/*.py' -o -path '*/policy/*.py' \) | head -n 1)" ]; then
-    gate python "100% coverage: connectors/ and policy/" \
-      uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100 || true
+  gate python "uv sync --locked ($dir)" in_dir "$dir" uv sync --locked --all-packages || return 0
+  if want_lint; then
+    gate python "ruff check ($dir)" in_dir "$dir" uv run ruff check . || true
+    gate python "ruff format --check ($dir)" in_dir "$dir" uv run ruff format --check . || true
+  fi
+  if want_test; then
+    gate python "pytest (coverage >= 85%, $dir)" \
+      in_dir "$dir" uv run pytest --cov --cov-report=term-missing --cov-fail-under=85 || true
+    if [ -n "$(find_sources \( -path '*/connectors/*.py' -o -path '*/policy/*.py' \) | head -n 1)" ]; then
+      gate python "100% coverage: connectors/ and policy/ ($dir)" \
+        in_dir "$dir" uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100 || true
+    fi
   fi
 }
 
 java_gates() {
   [ -f gradlew ] || { record java SKIP "no Gradle build yet (P1)"; return 0; }
   have java java || return 0
-  gate java "gradlew spotlessCheck check test" ./gradlew --no-daemon spotlessCheck check test || true
+  case "$MODE" in
+    all) gate java "gradlew spotlessCheck check test" ./gradlew --no-daemon spotlessCheck check test || true ;;
+    lint) gate java "gradlew spotlessCheck" ./gradlew --no-daemon spotlessCheck || true ;;
+    test) gate java "gradlew check test" ./gradlew --no-daemon check test || true ;;
+  esac
 }
 
 rust_gates() {
@@ -83,10 +114,14 @@ rust_gates() {
   if ! cargo fmt --version > /dev/null 2>&1 || ! cargo clippy --version > /dev/null 2>&1; then
     rustup component add rustfmt clippy || true # the official rust image ships a minimal profile
   fi
-  gate rust "cargo fmt --check" cargo fmt --all --check || true
-  gate rust "cargo clippy -D warnings" \
-    cargo clippy --workspace --all-targets --locked -- -D warnings || true
-  gate rust "cargo test" cargo test --workspace --locked || true
+  if want_lint; then
+    gate rust "cargo fmt --check" cargo fmt --all --check || true
+    gate rust "cargo clippy -D warnings" \
+      cargo clippy --workspace --all-targets --locked -- -D warnings || true
+  fi
+  if want_test; then
+    gate rust "cargo test" cargo test --workspace --locked || true
+  fi
 }
 
 gofmt_clean() {
@@ -104,11 +139,17 @@ go_gates() {
     go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}" || true
     PATH="$(go env GOPATH)/bin:$PATH"
   fi
-  gate go "gofmt" gofmt_clean || true
+  if want_lint; then
+    gate go "gofmt" gofmt_clean || true
+  fi
   while IFS= read -r module; do
     dir="$(dirname "$module")"
-    gate go "golangci-lint ($dir)" in_dir "$dir" golangci-lint run ./... || true
-    gate go "go test ./... ($dir)" in_dir "$dir" go test ./... || true
+    if want_lint; then
+      gate go "golangci-lint ($dir)" in_dir "$dir" golangci-lint run ./... || true
+    fi
+    if want_test; then
+      gate go "go test ./... ($dir)" in_dir "$dir" go test ./... || true
+    fi
   done <<< "$modules"
 }
 
@@ -120,21 +161,33 @@ kotlin_gates() {
     return 0
   fi
   have kotlin java || return 0
-  gate kotlin "gradlew check (edge/field-app)" in_dir edge/field-app ./gradlew --no-daemon check || true
+  if want_test; then
+    gate kotlin "gradlew check (edge/field-app)" in_dir edge/field-app ./gradlew --no-daemon check || true
+  else
+    record kotlin SKIP "no separate Kotlin lint gate; gradlew check runs in test mode"
+  fi
 }
 
 elixir_gates() {
   [ -f services/comms/mix.exs ] || { record elixir SKIP "no services/comms mix project (P28)"; return 0; }
   have elixir mix || return 0
   gate elixir "mix deps.get" in_dir services/comms env MIX_ENV=test mix deps.get || return 0
-  gate elixir "mix format --check-formatted" \
-    in_dir services/comms env MIX_ENV=test mix format --check-formatted || true
-  gate elixir "mix credo --strict" in_dir services/comms env MIX_ENV=test mix credo --strict || true
-  gate elixir "mix test" in_dir services/comms env MIX_ENV=test mix test || true
+  if want_lint; then
+    gate elixir "mix format --check-formatted" \
+      in_dir services/comms env MIX_ENV=test mix format --check-formatted || true
+    gate elixir "mix credo --strict" in_dir services/comms env MIX_ENV=test mix credo --strict || true
+  fi
+  if want_test; then
+    gate elixir "mix test" in_dir services/comms env MIX_ENV=test mix test || true
+  fi
 }
 
 proto_gates() {
   [ -f proto/buf.yaml ] || { record proto SKIP "no proto/buf.yaml yet (P2)"; return 0; }
+  if ! want_lint; then
+    record proto SKIP "no proto tests; buf lint and buf breaking run in lint mode"
+    return 0
+  fi
   have proto buf git || return 0
   gate proto "buf lint" buf lint proto || true
   if git rev-parse --verify --quiet refs/heads/develop > /dev/null \

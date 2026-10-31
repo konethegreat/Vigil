@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Command surface for governance checks, local Docker CI, act, the dev stack and the §4.3 container monitor (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — P1 bootstrap, lint and test recipes
 #
 # Run `just` to list recipes. P1 extends this file (bootstrap, lint, test; AI_COMMUNICATION MSG-003).
 
@@ -12,9 +13,23 @@ act_platform := "-P ubuntu-latest=catthehacker/ubuntu:act-latest"
 default:
     @just --list
 
+# Verify the pinned toolchains and install dependencies from the lockfiles (P1 task 1.1).
+bootstrap:
+    bash scripts/bootstrap.sh
+
 # Governance and hygiene checks (the same script as the pre-commit hook and pr-checks.yml).
 validate:
     python3 scripts/validate-compliance.py
+
+# Fast local linters: ruff, Spotless, Prettier, ESLint, tsc, buf, plus the compliance validator.
+lint: validate
+    MODE=lint bash scripts/ci/run-backend.sh
+    MODE=lint bash scripts/ci/run-frontend.sh
+
+# Fast local tests: pytest, Gradle tests and Vitest.
+test:
+    MODE=test bash scripts/ci/run-backend.sh
+    MODE=test bash scripts/ci/run-frontend.sh
 
 # Full local CI: compliance validator, then backend and frontend gates in Docker.
 ci: validate ci-backend ci-frontend
