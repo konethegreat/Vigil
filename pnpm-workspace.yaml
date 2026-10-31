@@ -1,6 +1,7 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Vigil workspaces
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Pin patched transitive packages
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Override vite to 8.3.5 (GHSA-rq7h-c2jc-7f22 and 5 more; patched 8.3.3)
 packages:
   - apps/*
 allowBuilds:
@@ -8,3 +9,4 @@ allowBuilds:
 overrides:
   sharp: 0.35.5
   source-map-js: 1.2.2
+  vite: 8.3.5
