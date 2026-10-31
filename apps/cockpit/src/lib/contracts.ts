@@ -1,5 +1,6 @@
 // Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Typed mission read models
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Agency membership in signed identity view
 export type EvidenceStatus = "SUPPORTED" | "DISPUTED" | "UNVERIFIED";
 export type TaskState =
   | "PROPOSED"
@@ -88,6 +89,7 @@ export type Identity = {
   actor: string;
   name: string;
   organisation: string;
+  agency_id: string;
   role: string;
   purpose: string;
   read_only: boolean;

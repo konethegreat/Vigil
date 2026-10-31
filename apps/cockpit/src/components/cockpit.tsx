@@ -3,6 +3,7 @@
 // Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Platform investigation navigation
 // Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Direct navigation and source intake
 "use client";
+// Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 — Observation and agency coordination workspaces
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -18,6 +19,8 @@ import {
   Fingerprint,
   GitBranch,
   Layers3,
+  Inbox,
+  ScanLine,
   MapPin,
   Plus,
   Radio,
@@ -56,7 +59,38 @@ import { HistoryView } from "./history";
 import { Investigations } from "./investigations";
 import { Sources } from "./sources";
 import { SourceIntake } from "./source-intake";
-type View = "desk" | "investigations" | "sources" | "intelligence" | "activity";
+import { Observations } from "./observations";
+import { AgencyInbox } from "./agency-inbox";
+type View =
+  | "desk"
+  | "investigations"
+  | "sources"
+  | "observations"
+  | "agency"
+  | "intelligence"
+  | "activity";
+const viewLabels: Record<View, string> = {
+  desk: "Missions",
+  investigations: "Investigations",
+  sources: "Sources",
+  observations: "Observations",
+  agency: "Agency inbox",
+  intelligence: "AI operations",
+  activity: "Decision history",
+};
+const viewDescriptions: Record<View, string> = {
+  desk: "Objectives, evidence, assigned work and confirmed outcomes.",
+  investigations:
+    "Explore source-backed objects, events and relationships across missions.",
+  sources:
+    "Read original records. Review quoted proposals. Publish supported findings.",
+  observations:
+    "Inspect sightings, event times and the coverage behind each search.",
+  agency:
+    "Share selected evidence. Accept responsibility. Return a supported result.",
+  intelligence: "Specialist reasoning, bounded tools, and visible uncertainty.",
+  activity: "Follow the record from first signal to confirmed outcome.",
+};
 type Modal =
   | { type: "create" }
   | { type: "source" }
@@ -177,7 +211,11 @@ export function Cockpit() {
       await api("session", { actor });
       await load();
       setTab("Situation");
-      setView("investigations");
+      setView(
+        ["gauteng", "limpopo", "agency-reviewer"].includes(actor)
+          ? "agency"
+          : "investigations",
+      );
       setQuery("");
       setFilter("All missions");
     } catch (e) {
@@ -293,6 +331,24 @@ export function Cockpit() {
           </button>
           <button
             className={
+              view === "observations" ? "nav-item selected" : "nav-item"
+            }
+            disabled={busy}
+            onClick={() => setView("observations")}
+          >
+            <ScanLine size={18} />
+            Observations
+          </button>
+          <button
+            className={view === "agency" ? "nav-item selected" : "nav-item"}
+            disabled={busy}
+            onClick={() => setView("agency")}
+          >
+            <Inbox size={18} />
+            Agency inbox
+          </button>
+          <button
+            className={
               view === "intelligence" ? "nav-item selected" : "nav-item"
             }
             onClick={() => setView("intelligence")}
@@ -334,11 +390,16 @@ export function Cockpit() {
             <option value="operations">District operations</option>
             <option value="protection">Protection services</option>
             <option value="reviewer">Independent review · read only</option>
+            <option value="gauteng">Gauteng coordination · fictional</option>
+            <option value="limpopo">Limpopo coordination · fictional</option>
+            <option value="agency-reviewer">
+              Gauteng case review · read only
+            </option>
           </select>
         </label>
         <div className="sidebar-bottom">
           <span className="connection-dot" />
-          LOCAL ENVIRONMENT <span>v0.3</span>
+          LOCAL ENVIRONMENT <span>v0.4</span>
         </div>
       </aside>
       <div className="workspace">
@@ -346,17 +407,7 @@ export function Cockpit() {
           <div className="breadcrumb">
             Workspace
             <ChevronRight size={12} />
-            <strong>
-              {view === "desk"
-                ? "Missions"
-                : view === "investigations"
-                  ? "Investigations"
-                  : view === "sources"
-                    ? "Sources"
-                    : view === "intelligence"
-                      ? "AI operations"
-                      : "Decision history"}
-            </strong>
+            <strong>{viewLabels[view]}</strong>
           </div>
           <div className="topbar-right">
             <span className="demo-label">
@@ -378,28 +429,8 @@ export function Cockpit() {
         <main id="main">
           <div className="page-heading">
             <div>
-              <h1>
-                {view === "desk"
-                  ? "Missions"
-                  : view === "investigations"
-                    ? "Investigations"
-                    : view === "sources"
-                      ? "Sources"
-                      : view === "intelligence"
-                        ? "AI operations"
-                        : "Decision history"}
-              </h1>
-              <p>
-                {view === "desk"
-                  ? "Objectives, evidence, assigned work and confirmed outcomes."
-                  : view === "investigations"
-                    ? "Explore source-backed objects, events and relationships across missions."
-                    : view === "sources"
-                      ? "Read original records. Review quoted proposals. Publish supported findings."
-                      : view === "intelligence"
-                        ? "Specialist reasoning, bounded tools, and visible uncertainty."
-                        : "Follow the record from first signal to confirmed outcome."}
-              </p>
+              <h1>{viewLabels[view]}</h1>
+              <p>{viewDescriptions[view]}</p>
             </div>
             {view === "desk" && (
               <button
@@ -461,6 +492,20 @@ export function Cockpit() {
                 setInvestigationTarget({ missionId, objectId });
                 setView("investigations");
               }}
+            />
+          ) : view === "observations" && identity ? (
+            <Observations
+              key={identity.actor}
+              identity={identity}
+              onBusy={setBusy}
+              openInbox={() => setView("agency")}
+            />
+          ) : view === "agency" && identity ? (
+            <AgencyInbox
+              key={identity.actor}
+              identity={identity}
+              onBusy={setBusy}
+              openObservations={() => setView("observations")}
             />
           ) : view === "intelligence" ? (
             <IntelligenceView intelligence={intelligence} error={auxError} />
