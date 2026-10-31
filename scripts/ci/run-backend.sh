@@ -2,8 +2,9 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Local backend CI runner: the ci-backend.yml gates for every language whose project exists (P0)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — MODE=lint|test for the P1 `just lint` / `just test` surface
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify golden-path templates (P1 task 1.4)
 #
-# Usage: [MODE=all|lint|test] scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto ...]
+# Usage: [MODE=all|lint|test] scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto | templates ...]
 # MODE defaults to all, which is what CI runs. lint selects formatters, linters and static checks;
 # test selects the test suites. The commands are the same in either mode, so `just lint` and
 # `just test` cannot drift from ci-backend.yml.
@@ -25,6 +26,7 @@ case "$MODE" in
     exit 2
     ;;
 esac
+export MODE
 want_lint() { [ "$MODE" != "test" ]; }
 want_test() { [ "$MODE" != "lint" ]; }
 
@@ -102,6 +104,16 @@ python_gates() {
         in_dir "$dir" uv run coverage report --include='*/connectors/*,*/policy/*' --fail-under=100 || true
     fi
   fi
+}
+
+templates_gates() {
+  [ -d templates/golden-paths/python ] || {
+    record templates SKIP "no golden-path templates yet (P1 task 1.4)"
+    return 0
+  }
+  have templates uv || return 0
+  gate templates "golden-path templates (MODE=$MODE)" \
+    bash scripts/ci/run-templates.sh || true
 }
 
 java_gates() {
@@ -229,15 +241,16 @@ proto_gates() {
 [ "$#" -gt 0 ] || set -- all
 for language in "$@"; do
   case "$language" in
-    all) python_gates; java_gates; rust_gates; go_gates; kotlin_gates; elixir_gates; proto_gates ;;
+    all) python_gates; templates_gates; java_gates; rust_gates; go_gates; kotlin_gates; elixir_gates; proto_gates ;;
     python) python_gates ;;
+    templates) templates_gates ;;
     java) java_gates ;;
     rust) rust_gates ;;
     go) go_gates ;;
     kotlin) kotlin_gates ;;
     elixir) elixir_gates ;;
     proto) proto_gates ;;
-    *) echo "unknown language '$language' (expected: all python java rust go kotlin elixir proto)" >&2; exit 2 ;;
+    *) echo "unknown language '$language' (expected: all python java rust go kotlin elixir proto templates)" >&2; exit 2 ;;
   esac
 done
 

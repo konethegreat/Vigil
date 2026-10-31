@@ -9,6 +9,7 @@
 # per-ecosystem network flags make Syft fetch Maven POMs, npm metadata and PyPI metadata; the
 # previous SYFT_ENRICH variable is not a Syft option and silently left every Maven package unknown.
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Treat golden-path template packages as first party
 name: sbom-license-scan
 
 on:
@@ -244,7 +245,11 @@ jobs:
           def first_party_licences():
               """Workspace packages carry the repository LICENSE, not third-party metadata."""
               owned = {}
-              for path in Path("services").glob("*/pyproject.toml"):
+              manifests = [
+                  *Path("services").glob("*/pyproject.toml"),
+                  *Path("templates/golden-paths").glob("*/*/pyproject.toml"),
+              ]
+              for path in manifests:
                   try:
                       project = tomllib.loads(path.read_text(encoding="utf-8")).get("project", {})
                   except (OSError, tomllib.TOMLDecodeError):

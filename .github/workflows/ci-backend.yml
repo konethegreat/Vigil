@@ -10,6 +10,7 @@
 # infra/docker/ci/Dockerfile.
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify the golden-path templates (P1 task 1.4)
 name: ci-backend
 
 on:
@@ -44,6 +45,7 @@ jobs:
       pull-requests: read # dorny/paths-filter lists PR files through the API
     outputs:
       python: ${{ steps.decide.outputs.python }}
+      templates: ${{ steps.decide.outputs.templates }}
       java: ${{ steps.decide.outputs.java }}
       rust: ${{ steps.decide.outputs.rust }}
       go: ${{ steps.decide.outputs.go }}
@@ -68,6 +70,10 @@ jobs:
               - '**/pyproject.toml'
               - 'uv.lock'
               - '.python-version'
+              - '.github/workflows/ci-backend.yml'
+            templates:
+              - 'templates/golden-paths/**'
+              - 'scripts/ci/run-templates.sh'
               - '.github/workflows/ci-backend.yml'
             java:
               - '**/*.java'
@@ -109,6 +115,7 @@ jobs:
         id: decide
         env:
           F_PYTHON: ${{ steps.filter.outputs.python }}
+          F_TEMPLATES: ${{ steps.filter.outputs.templates }}
           F_JAVA: ${{ steps.filter.outputs.java }}
           F_RUST: ${{ steps.filter.outputs.rust }}
           F_GO: ${{ steps.filter.outputs.go }}
@@ -126,6 +133,7 @@ jobs:
           }
           has_go_module() { git ls-files -- 'go.mod' '*/go.mod' | grep -q .; }
           decide python  "$F_PYTHON"  test -f services/mind/pyproject.toml
+          decide templates "$F_TEMPLATES" test -d templates/golden-paths/python
           decide java    "$F_JAVA"    test -f gradlew
           decide rust    "$F_RUST"    test -f Cargo.toml
           decide go      "$F_GO"      has_go_module
@@ -187,6 +195,26 @@ jobs:
           else
             echo "No Python connectors/ or policy/ modules yet: gate not applicable."
           fi
+
+  templates:
+    name: templates
+    needs: changes
+    if: needs.changes.outputs.templates == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Golden-path templates (lint, types and tests)
+        timeout-minutes: 8 # composite of three template gates: recorded exception to the 3-minute rule (MSG-027)
+        run: bash scripts/ci/run-templates.sh
 
   java:
     name: java
@@ -396,7 +424,7 @@ jobs:
   ci-backend:
     name: ci-backend
     if: always()
-    needs: [changes, python, java, rust, go, android, elixir, proto]
+    needs: [changes, python, templates, java, rust, go, android, elixir, proto]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:

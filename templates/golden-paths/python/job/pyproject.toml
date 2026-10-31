@@ -1,0 +1,49 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-10-31 — Python job golden path (P1 task 1.4)
+[project]
+name = "vigil-job-template"
+version = "0.1.0"
+description = "Vigil golden-path Python job: validated config, fail-closed Warden stub, OTel and explicit exit codes"
+license = "Apache-2.0"
+requires-python = ">=3.13"
+dependencies = [
+    "opentelemetry-api>=1.39,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.39,<2",
+    "opentelemetry-sdk>=1.39,<2",
+    "pydantic-settings>=2.9,<3",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19,<2",
+    "pytest>=9.2,<10",
+    "pytest-cov>=7.1,<8",
+    "ruff>=0.17.3,<1",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vigil_job_template"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "ASYNC", "PT", "SIM", "RUF", "TID"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert on values and use fixed synthetic inputs, including synthetic tokens.
+"tests/*.py" = ["S101", "S105", "S106"]
+
+[tool.mypy]
+files = ["src"]
+strict = true
+python_version = "3.13"
