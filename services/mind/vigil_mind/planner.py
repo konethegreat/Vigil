@@ -6,6 +6,7 @@ import html
 import json
 import os
 from datetime import UTC, datetime
+from typing import Any, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -82,7 +83,7 @@ class Planner:
         self.reasoner = os.getenv("VIGIL_REASONER_MODEL", "").strip()
         self.challenger = os.getenv("VIGIL_CHALLENGER_MODEL", "").strip()
 
-    async def status(self) -> dict:
+    async def status(self) -> dict[str, object]:
         installed: set[str] = set()
         reachable = False
         try:
@@ -106,8 +107,14 @@ class Planner:
         }
 
     async def call_model(
-        self, model: str, system: str, content: str, schema: dict, *, output_tokens: int = 768
-    ) -> dict:
+        self,
+        model: str,
+        system: str,
+        content: str,
+        schema: dict[str, Any],
+        *,
+        output_tokens: int = 768,
+    ) -> dict[str, Any]:
         response = await self.client.post(
             f"{self.url}/api/chat",
             json={
@@ -124,15 +131,20 @@ class Planner:
         )
         response.raise_for_status()
         content = response.json()["message"]["content"]
+        if not isinstance(content, str):
+            raise ValueError("Model response content must be text")
         if len(content) > 24000:
             raise ValueError("Model response exceeds the contract budget")
-        return json.loads(content)
+        parsed = json.loads(content)
+        if not isinstance(parsed, dict):
+            raise ValueError("Model response must be a JSON object")
+        return cast("dict[str, Any]", parsed)
 
-    async def plan(self, request: PlanRequest) -> dict:
+    async def plan(self, request: PlanRequest) -> dict[str, object]:
         analysis = baseline(request)
         mode = "BASELINE"
-        warnings = []
-        review = {"state": "NOT_RUN", "model": None, "concerns": []}
+        warnings: list[str] = []
+        review: dict[str, object] = {"state": "NOT_RUN", "model": None, "concerns": []}
         trace = [
             {"role": "snapshot", "status": "COMPLETE", "detail": "Authorised evidence snapshot"}
         ]

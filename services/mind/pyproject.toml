@@ -2,6 +2,7 @@
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Declare licence and scope CI lint exemption
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Refresh runtime and dev dependency floors
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Add the mypy --strict MUST gate
 [project]
 name = "vigil-mind"
 version = "0.1.0"
@@ -15,11 +16,17 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.19,<2",
     "pytest>=9.2,<10",
     "pytest-asyncio>=1.4.1,<2",
     "pytest-cov>=7.1,<8",
     "ruff>=0.17.3,<1",
 ]
+
+[tool.mypy]
+files = ["vigil_mind"]
+strict = true
+python_version = "3.13"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Polyglot backend engineering guide: Python, Java, Rust, Go, Kotlin, Elixir, SQL, cross-cutting rules, local Docker CI and container monitoring (P0) -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Record the P1 task 1.7 MUST gates as running -->
 
 # Vigil — Backend Engineering Guide
 
@@ -164,7 +165,7 @@ class ReviewDecisionOut(BaseModel):
 uv sync --locked                                  # never re-resolve in CI; uv.lock is committed
 uv run ruff check .                               # E,F,W,I,B,UP,S,ASYNC,PT,SIM,RUF,TID
 uv run ruff format --check .
-uv run mypy --strict src
+uv run mypy --strict src                            # vigil_mind/ for the current Mind package
 uv run pytest -q --cov=src --cov-branch --cov-fail-under=85
 uv run coverage report --include='src/vigil_mind_gateway/redaction/*' --fail-under=100   # policy-adjacent: 100%
 ```
@@ -172,7 +173,7 @@ uv run coverage report --include='src/vigil_mind_gateway/redaction/*' --fail-und
 - Markers: `unit` (no network; `pytest-socket --disable-socket`), `component` (Testcontainers), `contract` (schemas against API_DESIGN and `proto/`). Use `asyncio_mode = "auto"` and `--strict-markers`.
 - Test containers come from the Vigil registry mirror, never directly from Docker Hub, and never Bitnami images (appendix 05 §4m).
 - Code that must reach 100% coverage in Python: Mind gateway redaction and egress policy, the agent tool layer (tools run as the user), the ER s57 linkage lock, and doc-AI untrusted-content wrapping. **Keep it under a `policy/` sub-package, and connectors under `connectors/`,** because `scripts/ci/run-backend.sh` enforces the 100% gate on exactly those paths.
-- `mypy --strict` is a MUST gate under this guide, but the P0 runner does not run it yet; P1 adds it (§10.2).
+- `mypy --strict` is a MUST gate and runs in `scripts/ci/run-backend.sh` lint mode and `ci-backend.yml`; the Mind package is checked as `uv run mypy --strict vigil_mind` until services adopt a `src/` layout (§10.2).
 - uv and Ruff are single-vendor tools (the Astral acquisition, appendix 05 §1.4). Mirror their binaries and keep a pip-compatible export (`uv export --format requirements-txt`) as the air-gap fallback.
 
 ## 3. Java 25 / Spring Boot 4 / Spring Modulith 2
@@ -265,7 +266,7 @@ DATA_MODEL §15 is normative. In summary:
 ### 3.7 Testing: Testcontainers, JaCoCo, ArchUnit
 
 - Use Testcontainers with Spring Boot's `@ServiceConnection` for Postgres (the PostGIS + pgvector image built from `infra/docker/postgres/`), Kafka (KRaft), OpenSearch, Keycloak, OpenFGA and the Temporal dev server. Pull images from the Vigil mirror by setting `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX`. Container reuse is off in CI.
-- JaCoCo gates: at least 85% line coverage per service, and 100% for `vigil.core.audit`, the Warden adapter, the RLS/DLS compilers, the connector framework and every `connectors/*` package.
+- JaCoCo gates: at least 85% line coverage per service, and 100% for `vigil.core.audit`, the Warden adapter, the RLS/DLS compilers, the connector framework and every `connectors/*` package. The 85% limit is enforced by `jacocoTestCoverageVerification`, which `check` depends on; add the package-level 100% rules with the packages that need them.
 - ArchUnit rules run alongside Modulith verification:
 
 ```java
@@ -645,7 +646,7 @@ just ci-clean                                                  # down -v --remov
 
 | Job | What `scripts/ci/run-*.sh` runs today (languages whose project doesn't exist yet are skipped) | Still to add in P1, to match this guide |
 |---|---|---|
-| `ci-backend` | Python: `ruff check .`, `ruff format --check .`, `pytest --cov-fail-under=85`, plus 100% on `*/connectors/*` and `*/policy/*` · Java: `./gradlew spotlessCheck check test` · Rust: `cargo fmt --check`, `clippy -D warnings`, `cargo test` · Go: `golangci-lint`, `go test` · Kotlin: `./gradlew check` | `mypy --strict` (§2.7); `cargo deny` and `cargo llvm-cov` (§4.3); `go test -race` with coverage (§5.2); JaCoCo gates (§3.7) |
+| `ci-backend` | Python: `ruff check .`, `ruff format --check .`, `mypy --strict`, `pytest` with branch coverage ≥85%, plus 100% on `*/connectors/*` and `*/policy/*` · Java: `./gradlew spotlessCheck check test`, with JaCoCo line coverage ≥85% enforced by `check` · Rust: `cargo fmt --check`, `clippy -D warnings`, `cargo deny`, `cargo test`, `cargo llvm-cov --fail-under-lines 85` · Go: `golangci-lint`, `go test -race` with coverage ≥85% · Kotlin: `./gradlew check` | The 100% JaCoCo package gates for `vigil.core.audit`, the Warden adapter, the RLS/DLS compilers, the connector framework and `connectors/*` apply once those packages exist (§3.7) |
 | `ci-frontend` | The pnpm forms of the skill's `npx`/`npm` gates: `prettier --check`, `lint`, `tsc --noEmit`, `test`, `build` (Vigil commits `pnpm-lock.yaml`) | Bundle budgets and axe gates (FRONTEND_GUIDE §11, §14) |
 
 The service containers are tmpfs-backed: PostgreSQL 18 with PostGIS and pgvector, built from `infra/docker/postgres/`, and Valkey (ARCHITECTURE §5), not the skill template's pg16 image. The P0 harness pulls upstream images. Once Harbor exists (P1, P20), every image comes from the Vigil mirror.

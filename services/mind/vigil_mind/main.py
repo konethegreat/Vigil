@@ -3,7 +3,9 @@
 # Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Source extraction
 import hmac
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import cast
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -20,7 +22,7 @@ def authorize(x_vigil_service: str = Header(default="")) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with httpx.AsyncClient(follow_redirects=False) as client:
         app.state.planner = Planner(client)
         yield
@@ -30,24 +32,28 @@ app = FastAPI(title="Vigil Mind", version="0.1.0", lifespan=lifespan, docs_url=N
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "ok", "service": "vigil-mind"}
 
 
+def planner(request: Request) -> Planner:
+    return cast(Planner, request.app.state.planner)
+
+
 @app.get("/v1/status", dependencies=[Depends(authorize)])
-async def status(request: Request):
-    return await request.app.state.planner.status()
+async def status(request: Request) -> dict[str, object]:
+    return await planner(request).status()
 
 
 @app.post("/v1/plan", dependencies=[Depends(authorize)])
-async def plan(body: PlanRequest, request: Request):
-    return await request.app.state.planner.plan(body)
+async def plan(body: PlanRequest, request: Request) -> dict[str, object]:
+    return await planner(request).plan(body)
 
 
 @app.post("/v1/extract", dependencies=[Depends(authorize)])
-async def extract_source(body: ExtractRequest, request: Request):
+async def extract_source(body: ExtractRequest, request: Request) -> dict[str, object]:
     try:
-        return await extract(request.app.state.planner, body)
+        return await extract(planner(request), body)
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
         raise HTTPException(
             status_code=503,
