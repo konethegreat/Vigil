@@ -1,15 +1,25 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Local intelligence runtime
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Declare licence and scope CI lint exemption
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Refresh runtime and dev dependency floors
 [project]
 name = "vigil-mind"
 version = "0.1.0"
 license = "Apache-2.0"
 requires-python = ">=3.13"
-dependencies = ["fastapi>=0.115,<1", "httpx>=0.28,<1", "uvicorn>=0.34,<1"]
+dependencies = [
+    "fastapi>=0.162,<1",
+    "httpx>=0.28.1,<1",
+    "uvicorn>=0.54,<1",
+]
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "pytest-asyncio>=0.25,<2", "pytest-cov>=6,<8", "ruff>=0.11,<1"]
+dev = [
+    "pytest>=9.2,<10",
+    "pytest-asyncio>=1.4.1,<2",
+    "pytest-cov>=7.1,<8",
+    "ruff>=0.17.3,<1",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
