@@ -1,0 +1,42 @@
+# Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — GitHub Issue Form for feature proposals
+name: Feature Proposal
+description: Propose a capability, contract, or architecture increment for Vigil
+title: "feat(repo): <concise feature summary>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature proposals in Vigil are subject to the **Solution Evaluation Standard** ([INSTRUCTIONS.md §4.1](INSTRUCTIONS.md#41-solution-evaluation-standard-think-outside-the-box-mandate)) and architectural guardrails ([SYSTEM_COMPLIANCE_GUARDRAILS.md](docs/SYSTEM_COMPLIANCE_GUARDRAILS.md)). Red-line capabilities (mass surveillance, live public FRT, predictive policing) are banned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What operational gap or workflow limitation does this proposal solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution clearly. Include service contracts, ontology objects, or write-back considerations if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other approaches did you evaluate (including "do less" or existing component reuse)?
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Vigil Constraint Checklist
+      options:
+        - label: "This capability does not violate Vigil's red-line guardrails (e.g. no bulk interception, no live public FRT)."
+          required: true
+        - label: "This design preserves sovereign offline execution and requires no proprietary hyperscaler cloud egress."
+          required: true
+        - label: "Any proposed new dependencies comply with ADR-0003 (permissive green open-source licenses only)."
+          required: true

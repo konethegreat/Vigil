@@ -1,6 +1,7 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Grounded analysis
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-27 — Extraction output budget
+# Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-28 — Serialize model input
 import html
 import json
 import os
@@ -11,6 +12,7 @@ from uuid import uuid4
 import httpx
 
 from .contracts import Analysis, Challenge, Hypothesis, PlanRequest, validate_references
+from .prompt_content import untrusted_element
 
 
 def baseline(request: PlanRequest) -> Analysis:
@@ -136,15 +138,21 @@ class Planner:
         ]
         if self.reasoner:
             payload = "\n".join(
-                f'<untrusted_content id="{html.escape(item.id, quote=True)}" '
-                f'source="mission-evidence" retrieved_at="{datetime.now(UTC).isoformat()}" '
-                f'sha256="{item.sha256}">{html.escape(item.model_dump_json())}</untrusted_content>'
+                untrusted_element(
+                    "untrusted_content",
+                    item.model_dump_json(),
+                    id=item.id,
+                    source="mission-evidence",
+                    retrieved_at=datetime.now(UTC).isoformat(),
+                    sha256=item.sha256,
+                )
                 for item in request.evidence
             )
             content = (
                 f"Domain: {request.domain}\n"
-                f"<untrusted_objective>{html.escape(request.objective)}</untrusted_objective>\n"
-                f"{payload}"
+                + untrusted_element("untrusted_objective", request.objective)
+                + "\n"
+                + payload
             )
             system = (
                 "You assist a human mission owner. Extract and analyse the supplied evidence only. "

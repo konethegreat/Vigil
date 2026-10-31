@@ -82,7 +82,7 @@
 # Tier 1: Foundation (Sequential)
 
 ## P0: Governance Bootstrap & Founding Research
-**Status**: 🚀 In Progress — Kone Tshivhinda (Claude Opus 5.5) | Started: 2026-09-25
+**Status**: 🚀 In Progress — Kone Tshivhinda (Qoder) | Started: 2026-10-31 — D1–D12 signed off 2026-10-31 (MSG-043); closure pending PR #1 merge
 **Depends On**: —
 **Blocks**: P1–P43
 **Complexity**: Medium

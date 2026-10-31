@@ -1,0 +1,9 @@
+# Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — Issue template chooser configuration
+blank_issues_enabled: false
+contact_links:
+  - name: Community Discussions
+    url: https://github.com/konethegreat/Vigil/discussions
+    about: Ask questions, share ideas, and discuss operational use cases.
+  - name: Security Vulnerability Disclosure
+    url: https://github.com/konethegreat/Vigil/security/advisories/new
+    about: Privately report a security or privacy vulnerability.

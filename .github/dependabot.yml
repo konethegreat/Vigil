@@ -1,0 +1,42 @@
+# Written by Kone Tshivhinda (Gemini 3.8 Flash) on 2026-10-16 — Dependabot automated vulnerability & dependency updates
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(repo)"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "npm"
+    directory: "/apps/cockpit"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(cockpit)"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "pip"
+    directory: "/services/mind"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(mind)"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(core)"
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci(infra)"
+    open-pull-requests-limit: 5

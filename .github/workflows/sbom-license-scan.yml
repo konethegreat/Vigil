@@ -1,9 +1,11 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Syft SPDX SBOM (uploaded as an artifact) and the ADR-0003 licence policy gate (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Use Syft's per-ecosystem network licence lookup
 #
 # Skill §3 sbom-license-scan; ADR-0003 "Controls": block red licences, and amber licences without
 # an entry in .github/licence-allowlist.yml, on every PR. Required status check: sbom-license-scan.
-# Syft reads the committed lockfiles (INSTRUCTIONS §6.5); SYFT_ENRICH=all lets it look licences up
-# online (Maven Central, npm, PyPI, Go proxy), because lockfiles alone rarely carry them.
+# Syft reads the committed lockfiles (INSTRUCTIONS §6.5), which rarely carry licence metadata. The
+# per-ecosystem network flags make Syft fetch Maven POMs, npm metadata and PyPI metadata; the
+# previous SYFT_ENRICH variable is not a Syft option and silently left every Maven package unknown.
 name: sbom-license-scan
 
 on:
@@ -31,7 +33,8 @@ jobs:
       - name: Syft SBOM (SPDX JSON), uploaded as a workflow artifact
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         env:
-          SYFT_ENRICH: all
+          SYFT_JAVASCRIPT_SEARCH_REMOTE_LICENSES: "true"
+          SYFT_PYTHON_SEARCH_REMOTE_LICENSES: "true"
         with:
           path: .
           format: spdx-json
@@ -47,10 +50,17 @@ jobs:
           python -m pip install --quiet "pyyaml==6.0.3"
           python - <<'PY'
           """Red licences always fail; amber licences fail unless allow-listed (ADR-0003)."""
+          import fnmatch
           import json
           import os
           import re
           import sys
+          import tomllib
+          from concurrent.futures import ThreadPoolExecutor
+          from pathlib import Path
+          from urllib.parse import unquote
+          from urllib.request import urlopen
+          from xml.etree import ElementTree
 
           import yaml
 
@@ -67,11 +77,176 @@ jobs:
               "ZLIB", "UNICODE-DFS-2016", "UNICODE-3.0", "BSL-1.0", "MPL-2.0", "EPL-2.0", "CC-BY-4.0",
               "CC0-1.0", "UNLICENSE", "PYTHON-2.0", "PSF-2.0", "BLUEOAK-1.0.0", "X11", "CURL",
           }
+          # Syft cannot read licence metadata from a Gradle lockfile (only from jars or POMs it
+          # catalogs), so Java declarations are read from the canonical Maven Central POM. Names
+          # outside this map become LicenseRef tokens and therefore fail closed as amber.
+          POM_LICENCES = {
+              "apache license, version 2.0": "Apache-2.0",
+              "apache license version 2.0": "Apache-2.0",
+              "the apache software license, version 2.0": "Apache-2.0",
+              "the apache software license version 2.0": "Apache-2.0",
+              "apache 2.0": "Apache-2.0",
+              "apache-2.0": "Apache-2.0",
+              "mit license": "MIT",
+              "the mit license": "MIT",
+              "mit": "MIT",
+              "bsd-2-clause": "BSD-2-Clause",
+              "bsd 2-clause": "BSD-2-Clause",
+              "bsd-3-clause": "BSD-3-Clause",
+              "bsd 3-clause": "BSD-3-Clause",
+              "eclipse public license 2.0": "EPL-2.0",
+              "eclipse public license - v 2.0": "EPL-2.0",
+              "epl 2.0": "EPL-2.0",
+              "epl-2.0": "EPL-2.0",
+              "eclipse distribution license - v 1.0": "BSD-3-Clause",
+              "edl 1.0": "BSD-3-Clause",
+              "edl-1.0": "BSD-3-Clause",
+              "gpl2 w/cpe": "GPL-2.0-only WITH Classpath-exception-2.0",
+              "lgpl-2.1-only": "LGPL-2.1-only",
+              "postgresql license": "PostgreSQL",
+              "isc license": "ISC",
+          }
+          SAFE_COORDINATE = re.compile(r"^[A-Za-z0-9_.-]+$")
+
+
+          def spdx_licence(name):
+              """Map common Maven labels to SPDX ids; anything unrecognised fails closed."""
+              key = " ".join(name.lower().split())
+              if key in POM_LICENCES:
+                  return POM_LICENCES[key]
+              if "apache" in key and "2" in key:
+                  return "Apache-2.0"
+              if "eclipse public license" in key:
+                  return "EPL-2.0" if "2" in key else "EPL-1.0" if "1" in key else None
+              if "eclipse distribution license" in key:
+                  return "BSD-3-Clause"
+              if "bsd" in key and "3" in key:
+                  return "BSD-3-Clause"
+              if "bsd" in key and "2" in key:
+                  return "BSD-2-Clause"
+              if "postgresql" in key:
+                  return "PostgreSQL"
+              return None
+
+
+          def fetch_pom(group, artifact, version):
+              if not all(SAFE_COORDINATE.match(part) for part in (group, artifact, version)):
+                  return None
+              if any(part in (".", "..") for part in (group, artifact, version)):
+                  return None
+              url = (
+                  "https://repo1.maven.org/maven2/"
+                  f"{group.replace('.', '/')}/{artifact}/{version}/{artifact}-{version}.pom"
+              )
+              try:
+                  with urlopen(url, timeout=15) as response:
+                      return ElementTree.fromstring(response.read())
+              except Exception:  # unavailable or malformed POM: stay fail-closed
+                  return None
+
+
+          def licence_names(root):
+              names = []
+              for node in root.iter():
+                  if node.tag.rsplit("}", 1)[-1] == "license":
+                      name = next(
+                          (child.text for child in node if child.tag.rsplit("}", 1)[-1] == "name"),
+                          None,
+                      )
+                      if name and name.strip():
+                          names.append(" ".join(name.split()))
+              return names
+
+
+          def parent_coordinates(root, group, version):
+              for node in root:
+                  if node.tag.rsplit("}", 1)[-1] != "parent":
+                      continue
+                  values = {
+                      child.tag.rsplit("}", 1)[-1]: (child.text or "").strip()
+                      for child in node
+                  }
+                  if values.get("artifactId"):
+                      return (
+                          values.get("groupId", group),
+                          values["artifactId"],
+                          values.get("version", version),
+                      )
+              return None
+
+
+          def pom_expression(purl):
+              """Read the declared licence, following up to three parent POMs when inherited."""
+              if not purl.startswith("pkg:maven/"):
+                  return None
+              coordinates = unquote(purl.removeprefix("pkg:maven/")).split("@", 1)
+              if len(coordinates) != 2 or "/" not in coordinates[0]:
+                  return None
+              group, artifact = coordinates[0].split("/", 1)
+              version = coordinates[1].split("?", 1)[0].split("#", 1)[0]
+              seen = set()
+              for _ in range(4):
+                  if (group, artifact, version) in seen:
+                      break
+                  seen.add((group, artifact, version))
+                  root = fetch_pom(group, artifact, version)
+                  if root is None:
+                      return None
+                  names = licence_names(root)
+                  if names:
+                      tokens = []
+                      for name in names:
+                          mapped = spdx_licence(name)
+                          if mapped:
+                              tokens.append(mapped)
+                          else:
+                              token = "LicenseRef-" + re.sub(
+                                  r"[^A-Za-z0-9.-]", "-", name
+                              )[:40]
+                              ref_names[token] = name
+                              tokens.append(token)
+                      return " OR ".join(tokens)
+                  parent = parent_coordinates(root, group, version)
+                  if not parent:
+                      return None
+                  group, artifact, version = parent
+              return None
 
           with open("sbom.spdx.json", encoding="utf-8") as fh:
               sbom = json.load(fh)
           with open(".github/licence-allowlist.yml", encoding="utf-8") as fh:
-              allowed = {e["package"] for e in (yaml.safe_load(fh) or {}).get("allowlist") or []}
+              allowlist = (yaml.safe_load(fh) or {}).get("allowlist") or []
+          allowed = {entry["package"] for entry in allowlist if entry.get("package")}
+
+
+          def is_allowed(name):
+              return any(fnmatch.fnmatchcase(name, pattern) for pattern in allowed)
+
+
+          def first_party_licences():
+              """Workspace packages carry the repository LICENSE, not third-party metadata."""
+              owned = {}
+              for path in Path("services").glob("*/pyproject.toml"):
+                  try:
+                      project = tomllib.loads(path.read_text(encoding="utf-8")).get("project", {})
+                  except (OSError, tomllib.TOMLDecodeError):
+                      continue
+                  licence = project.get("license")
+                  if isinstance(licence, dict):
+                      licence = licence.get("text")
+                  if project.get("name") and isinstance(licence, str):
+                      owned[project["name"]] = licence
+              for path in Path("apps").glob("*/package.json"):
+                  try:
+                      manifest = json.loads(path.read_text(encoding="utf-8"))
+                  except (OSError, json.JSONDecodeError):
+                      continue
+                  if manifest.get("name") and isinstance(manifest.get("license"), str):
+                      owned[manifest["name"]] = manifest["license"]
+              return owned
+
+
+          first_party = first_party_licences()
           ref_names = {x["licenseId"]: x.get("name", "") for x in sbom.get("hasExtractedLicensingInfos", [])}
           # The element the document DESCRIBES is the scanned repository itself (Vigil's own code), not a dependency.
           own = {
@@ -133,14 +308,38 @@ jobs:
 
           failures, waived, unknown = [], [], 0
           packages = [p for p in sbom.get("packages", []) if p.get("SPDXID") not in own]
+          missing_maven = {
+              ref.get("referenceLocator")
+              for pkg in packages
+              if not any(
+                  pkg.get(key) and pkg.get(key) not in ("NOASSERTION", "NONE")
+                  for key in ("licenseConcluded", "licenseDeclared")
+              )
+              for ref in pkg.get("externalRefs", [])
+              if ref.get("referenceType") == "purl"
+              and str(ref.get("referenceLocator", "")).startswith("pkg:maven/")
+          }
+          with ThreadPoolExecutor(max_workers=8) as pool:
+              resolved = dict(zip(missing_maven, pool.map(pom_expression, missing_maven)))
           for pkg in packages:
               expressions = [pkg.get(key) for key in ("licenseConcluded", "licenseDeclared")]
               expressions = [e for e in expressions if e and e not in ("NOASSERTION", "NONE")]
+              purls = [r.get("referenceLocator", "") for r in pkg.get("externalRefs", [])]
+              if not expressions:
+                  expression = next(
+                      (resolved.get(p) for p in purls if resolved.get(p)), None
+                  )
+                  if expression:
+                      expressions = [expression]
+              if not expressions and pkg.get("name") in first_party:
+                  expressions = [first_party[pkg["name"]]]
               if not expressions:
                   unknown += 1
-                  if (pkg.get("name") or "") in allowed:
+                  if is_allowed(pkg.get("name") or ""):
+                      waived.append(
+                          f"🟡 unknown {pkg.get('name')}@{pkg.get('versionInfo', '?')}: allow-listed"
+                      )
                       continue
-                  purls = [r.get("referenceLocator", "") for r in pkg.get("externalRefs", [])]
                   if any(p.startswith("pkg:github/") for p in purls):
                       continue  # GitHub Actions: CI-only, SHA-pinned, never shipped (ADR-0003 scope)
                   failures.append(f"🟡 unknown {pkg.get('name')}@{pkg.get('versionInfo', '?')}: no licence data")
@@ -149,7 +348,7 @@ jobs:
               label = f"{pkg.get('name')}@{pkg.get('versionInfo', '?')}: {' / '.join(expressions)}"
               if worst == 2:
                   failures.append(f"🔴 red {label}")
-              elif worst == 1 and pkg.get("name") in allowed:
+              elif worst == 1 and is_allowed(pkg.get("name") or ""):
                   waived.append(f"🟡 amber {label} (allow-listed)")
               elif worst == 1:
                   failures.append(f"🟡 amber {label} (not in .github/licence-allowlist.yml)")
