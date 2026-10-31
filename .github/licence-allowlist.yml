@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — ADR-0003 amber-licence allow-list read by sbom-license-scan.yml (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Record the dev-only mypy dependencies whose wheel metadata Syft cannot read (P1 task 1.7)
 #
 # What this file is
 #   The licence gate in .github/workflows/sbom-license-scan.yml classifies every package in the
@@ -41,6 +42,21 @@ allowlist:
     licence: BSD-3-Clause
     adr: ADR-0003
     scope: services/mind (unmodified transitive dependency; no SPDX metadata upstream)
+    approved_by: Kone Tshivhinda (Qoder)
+    review_by: 2027-04-30
+  # Syft does not surface these two wheels' licence metadata. The bundled LICENSE files were read
+  # directly: mypy-extensions is MIT and pathspec is MPL-2.0 (green under ADR-0003, unmodified).
+  # Both enter only the service's dev group for the mypy gate and are never shipped.
+  - package: mypy-extensions
+    licence: MIT
+    adr: ADR-0003
+    scope: services/mind (dev-only mypy dependency; unmodified; no SPDX metadata upstream)
+    approved_by: Kone Tshivhinda (Qoder)
+    review_by: 2027-04-30
+  - package: pathspec
+    licence: MPL-2.0
+    adr: ADR-0003
+    scope: services/mind (dev-only mypy dependency; unmodified; no SPDX metadata upstream)
     approved_by: Kone Tshivhinda (Qoder)
     review_by: 2027-04-30
 
