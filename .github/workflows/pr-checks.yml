@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Fast PR governance gate: compliance validator (branch, hygiene, WORKLOG vs base, append-only ledgers, attribution, PR title) and clean-tree check (P0)
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins
 #
 # Skill §3: fast verification (< 45 s). Every rule lives in scripts/validate-compliance.py, so the
 # pre-commit hook, `just validate` and this workflow cannot disagree:
@@ -29,7 +30,7 @@ jobs:
     timeout-minutes: 3 # skill §4.3: linters ≤ 3 min; target < 45 s
     steps:
       - name: Checkout (full history, so the validator can diff against the base branch)
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
