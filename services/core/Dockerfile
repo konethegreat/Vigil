@@ -1,6 +1,6 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Java core build and runtime
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
-FROM gradle:9.1.0-jdk25@sha256:d2f954187670397de6dd42c5c3a9d4535409b590059c6d248ff2a59ba67cecc3 AS build
+FROM gradle:9.8.1-jdk25@sha256:4a80c8083135754f689c3e31bb858a22282c66f5625cafb09ed217814b363ee5 AS build
 WORKDIR /workspace
 COPY build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile ./
 COPY services/core services/core
