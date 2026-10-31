@@ -1,6 +1,7 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Command surface for governance checks, local Docker CI, act, the dev stack and the §4.3 container monitor (P0)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — P1 bootstrap, lint and test recipes
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Note the mypy and coverage MUST gates
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the golden-path template check (P1 task 1.4)
 #
 # Run `just` to list recipes. P1 extends this file (bootstrap, lint, test; AI_COMMUNICATION MSG-003).
 
@@ -22,15 +23,19 @@ bootstrap:
 validate:
     python3 scripts/validate-compliance.py
 
-# Fast local linters: ruff, mypy, Spotless, Prettier, ESLint, tsc, buf, plus the compliance validator.
+# Fast local linters: ruff, mypy, Spotless, Prettier, ESLint, tsc, buf, templates, plus the compliance validator.
 lint: validate
     MODE=lint bash scripts/ci/run-backend.sh
     MODE=lint bash scripts/ci/run-frontend.sh
 
-# Fast local tests: pytest with branch coverage, Gradle tests with JaCoCo verification, and Vitest.
+# Fast local tests: pytest with branch coverage, Gradle tests with JaCoCo verification, template tests, and Vitest.
 test:
     MODE=test bash scripts/ci/run-backend.sh
     MODE=test bash scripts/ci/run-frontend.sh
+
+# Verify the golden-path templates on their own (P1 task 1.4).
+templates:
+    bash scripts/ci/run-templates.sh
 
 # Full local CI: compliance validator, then backend and frontend gates in Docker.
 ci: validate ci-backend ci-frontend

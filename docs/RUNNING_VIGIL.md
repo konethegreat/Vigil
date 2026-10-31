@@ -3,6 +3,7 @@
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-27 - Source intake, extraction and review -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - P1 platform services and dev-up -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Document the mypy and coverage gates -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Document the golden-path template gate -->
 
 
 # Running Vigil locally
@@ -148,7 +149,7 @@ uv run mypy --strict vigil_mind
 uv run pytest --cov=vigil_mind --cov-branch --cov-report=term-missing --cov-fail-under=85
 ```
 
-`just lint` and `just test` run these gates together with Spotless and the JaCoCo line-coverage verification (85% minimum, enforced by `check`); `just validate` runs the compliance validator.
+`just lint` and `just test` run these gates together with Spotless and the JaCoCo line-coverage verification (85% minimum, enforced by `check`); `just validate` runs the compliance validator. The golden-path templates under `templates/golden-paths/` are standalone uv projects and run in the same gates; `bash scripts/ci/run-templates.sh` checks them on their own.
 
 The Java tests use a separate temporary PostgreSQL database and a separate Mind service with baseline planning, regardless of the demonstration model settings. Add `--rerun-tasks` after `gradle` when you need to force execution against a recreated test database rather than accept Gradle's up-to-date result. The HTTP acceptance script creates a clearly named synthetic mission in the running operations workspace and leaves the completed record as evidence. It is restricted to localhost. The smoke run is easiest with the default baseline planner; configured local models make it slower. Actual browser coverage and acceptance results are recorded in `MISSION_INCREMENT.md`.
 
