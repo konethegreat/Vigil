@@ -10,4 +10,3 @@
 ## Third-party notices
 
 `sharp` bundles an unmodified [libvips](https://www.libvips.org/) binary through the `@img/sharp-*` packages, licensed under LGPL-3.0-or-later. It is dynamically linked and not modified; its source is available from the `libvips` project and its npm distribution. `sharp` itself is Apache-2.0. This notice is required by ADR-0003 for allow-listed LGPL components.
-
