@@ -1,6 +1,7 @@
 # Written for Kone Tshivhinda by OpenAI Codex (GPT-6) on 2026-09-25 — Java core build and runtime
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
-FROM gradle:9.1.0-jdk25@sha256:d2f954187670397de6dd42c5c3a9d4535409b590059c6d248ff2a59ba67cecc3 AS build
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Match the Gradle wrapper version (9.8.2)
+FROM gradle:9.8.2-jdk25@sha256:e46e15353757ef9c9be0197a243653e88d25ebcd4c3c841057cf839c11fcf898 AS build
 WORKDIR /workspace
 COPY build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile ./
 COPY services/core services/core

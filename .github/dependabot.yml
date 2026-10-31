@@ -2,6 +2,7 @@
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Point npm at the pnpm workspace root, use the uv ecosystem, group minor updates
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Ignore pending majors until the toolchain supports them
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Watch Dockerfiles in their actual directories, not the repository root
+# Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Hold container runtimes at the versions the project supports
 #
 # Dependabot PRs are advisory: INSTRUCTIONS §12 requires a WORKLOG row and §8 an attribution line per
 # change, which the bot cannot add, so maintainers port each batch into a governed `chore/repo` branch.
@@ -79,6 +80,10 @@ updates:
     commit-message:
       prefix: "ci(repo)"
     open-pull-requests-limit: 2
+    ignore:
+      # CI runs Node 24 LTS; move the base image together with the runtime.
+      - dependency-name: "node"
+        versions: [">=25.0.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
@@ -90,6 +95,13 @@ updates:
     commit-message:
       prefix: "ci(repo)"
     open-pull-requests-limit: 2
+    ignore:
+      # Stay on Gradle 9.x; a major build-tool upgrade is a project decision.
+      - dependency-name: "gradle"
+        versions: [">=10.0.0"]
+      # Stay on Java 25 until the language charter moves.
+      - dependency-name: "eclipse-temurin"
+        versions: [">=26.0.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
@@ -101,6 +113,10 @@ updates:
     commit-message:
       prefix: "ci(repo)"
     open-pull-requests-limit: 2
+    ignore:
+      # The project pins Python 3.13 (P1 task 1.1).
+      - dependency-name: "python"
+        versions: [">=3.14.0"]
     groups:
       minor-and-patch:
         patterns: ["*"]
