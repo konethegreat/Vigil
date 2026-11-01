@@ -1,0 +1,27 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Rust golden-path workspace (P1 task 1.4)
+
+[workspace]
+resolver = "3"
+members = ["library", "job"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/konethegreat/Vigil"
+
+[workspace.dependencies]
+opentelemetry = { version = "0.33.1", default-features = false, features = ["trace"] }
+opentelemetry_sdk = { version = "0.33.1", default-features = false, features = ["trace"] }
+opentelemetry-otlp = { version = "0.33.1", default-features = false, features = ["trace", "http-proto", "reqwest-blocking-client"] }
+# The OTLP client needs a TLS backend for the https collector endpoint. native-tls uses the
+# platform store (SChannel, OpenSSL, Security Framework) instead of bundling a root list, which
+# keeps every resolved crate inside the ADR-0003 green set.
+reqwest = { version = "0.13.1", default-features = false, features = ["blocking", "native-tls"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"

@@ -204,7 +204,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.templates == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -227,9 +227,19 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: "templates/golden-paths/typescript/**/pnpm-lock.yaml"
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: 1.99.1 # keep in step with templates/golden-paths/rust/rust-toolchain.toml
+          components: rustfmt, clippy, llvm-tools-preview
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: templates/golden-paths/rust -> target
+      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2
+        with:
+          tool: cargo-deny,cargo-llvm-cov
 
       - name: Golden-path templates (lint, types and tests)
-        timeout-minutes: 15 # composite of the Python, Java and TypeScript template gates; the Java build is compile-inclusive (MSG-027)
+        timeout-minutes: 25 # composite of the Python, Java, TypeScript and Rust template gates; the Java and Rust builds are compile-inclusive (MSG-027)
         run: bash scripts/ci/run-templates.sh
 
   java:

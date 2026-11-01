@@ -1,6 +1,7 @@
 <!-- Written by Kone Tshivhinda (Qoder) on 2026-10-31 — Golden-path template contract and language rollout (P1 task 1.4) -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Java 25 templates are available; state the coverage metric per stack -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — TypeScript templates are available; state the TypeScript version hold -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Rust library and job templates are available (P1 task 1.4) -->
 
 # Golden-path templates
 
@@ -25,7 +26,7 @@ deployed from this folder.
 | Warden | Binding stub that builds a `PolicyContext`; it fails closed until the P3 binding is wired | INSTRUCTIONS §9.1; ADR-0005 |
 | OpenTelemetry | OTLP export only when an in-boundary collector endpoint is configured; no SaaS exporters and no required egress | BACKEND_GUIDE §9.2; INSTRUCTIONS §9.8 |
 | SBOM | Committed lockfile and pinned dependency floors so Syft can inventory the project | INSTRUCTIONS §6.5; ADR-0003 |
-| Tests | Runnable offline, at least 85 % coverage, 100 % for the policy module; the metric is the one the stack's coverage tool enforces (branch for Python, line for JaCoCo, statements and branches for Vitest) | BACKEND_GUIDE §1 B8 |
+| Tests | Runnable offline, at least 85 % coverage, 100 % for the policy module; the metric is the one the stack's coverage tool enforces (branch for Python, line for JaCoCo and cargo-llvm-cov, statements and branches for Vitest) | BACKEND_GUIDE §1 B8 |
 
 ## Shapes
 
@@ -46,7 +47,7 @@ owns configuration and the policy context, and passes both explicitly
 | Python 3.13 | Available | `python/service`, `python/library`, `python/job` | P1 |
 | Java 25 | Available | `java/service`, `java/library`, `java/job` | P1 |
 | TypeScript 6.0.3 | Available | `typescript/service`, `typescript/library` | P1, before P10 |
-| Rust | Planned | Library and job; service only if a gRPC/REST listener is needed | P1, with P3 |
+| Rust 1.99.1 | Available | `rust/library`, `rust/job`; a service shape is added with P3 if Warden needs a gRPC/REST listener | P1, with P3 |
 | Go | Planned | Service, library and job | P1, with P20 |
 | Kotlin | Planned | Field app module, not a service | P1, with P27 |
 | Elixir | Deferred | Comms gateway only, if the P28 ADR selects it | P28 |
@@ -106,6 +107,25 @@ exist yet is listed as planned, not silently omitted.
 6. Add the service to `docker-compose.dev.yml`, `ci-backend.yml` and
    `docs/RUNNING_VIGIL.md` in the same change that makes it deployable.
 
+## Copying a Rust template
+
+1. Copy `library/` or `job/` into the target cargo workspace. The crates
+   inherit `[workspace.dependencies]` and `[workspace.lints]` from
+   `rust/Cargo.toml`, so move those keys into the target root manifest instead
+   of keeping two copies.
+2. Rename the package in the crate's `Cargo.toml`, keep `publish = false` unless
+   the crate is released, and keep the crate listed as a workspace member.
+3. Replace the example operation or work unit with the real contract. Keep the
+   policy seam, the `kms://`-only checks and the job exit codes (`0` success,
+   `2` configuration, `3` policy) unchanged.
+4. Replace `UnavailableWarden` with the P3 binding. Never add an allow-all mode
+   or a bypass flag.
+5. Copy `rust-toolchain.toml` and `deny.toml` to the workspace root. After
+   changing dependencies run `cargo update`, `cargo deny check` and commit
+   `Cargo.lock` with the change.
+6. Add the crate to `ci-backend.yml` and `docs/RUNNING_VIGIL.md` in the same
+   change that makes it deployable.
+
 ## Verification
 
 `scripts/ci/run-templates.sh` runs every template check that CI runs, in one
@@ -147,6 +167,22 @@ build. Vitest gates on statements, branches, functions and lines at 85 %, with
 100 % on `src/policy.ts`; the library holds 100 % overall. TypeScript 7 is held
 until `typescript-eslint` widens its peer range past `<6.1.0`, so the templates
 pin 6.0.3, the version the cockpit builds with.
+
+The Rust shapes are one cargo workspace with `library` and `job` members:
+
+```bash
+cd templates/golden-paths/rust
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo deny check
+cargo llvm-cov --workspace --locked --fail-under-lines 85
+```
+
+cargo-llvm-cov gates on line coverage at 85 % for the workspace, and the gate
+also requires 100 % lines on every `src/policy.rs`; the library holds 100 %
+overall. `cargo deny check` applies `deny.toml`, which mirrors the ADR-0003
+allow list. Syft has no Rust remote-licence lookup, so the SBOM job delegates
+`pkg:cargo` packages to the same cargo-deny licence check.
 
 The service and job templates also assert that a protected path returns `503`
 (or, for a job, exit code `3`) while the Warden binding is unavailable. That is

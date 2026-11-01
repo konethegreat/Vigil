@@ -8,8 +8,12 @@
 # Syft reads the committed lockfiles (INSTRUCTIONS §6.5), which rarely carry licence metadata. The
 # per-ecosystem network flags make Syft fetch Maven POMs, npm metadata and PyPI metadata; the
 # previous SYFT_ENRICH variable is not a Syft option and silently left every Maven package unknown.
+# Syft has no Rust remote-licence lookup, so pkg:cargo packages would all be unknown. This job runs
+# cargo deny against the same ADR-0003 allow list and the Python gate records those packages as
+# delegated to it; a Cargo.lock without a deny.toml fails rather than passing unclassified.
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Treat golden-path template packages as first party
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Delegate Cargo licence metadata to cargo deny (P1 task 1.4)
 name: sbom-license-scan
 
 on:
@@ -34,6 +38,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Which Cargo workspaces have a committed lockfile?
+        id: cargo
+        run: |
+          file="$RUNNER_TEMP/cargo-workspaces.txt"
+          git ls-files -- 'Cargo.lock' '**/Cargo.lock' | sort -u > "$file"
+          if [ -s "$file" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            cat "$file"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Syft SBOM (SPDX JSON), uploaded as a workflow artifact
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         env:
@@ -44,6 +60,34 @@ jobs:
           format: spdx-json
           output-file: sbom.spdx.json
           artifact-name: sbom-${{ github.sha }}.spdx.json
+
+      - name: Rust toolchain for the Cargo licence gate
+        if: steps.cargo.outputs.present == 'true'
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: 1.99.1 # keep in step with templates/golden-paths/rust/rust-toolchain.toml
+      - name: Install cargo-deny
+        if: steps.cargo.outputs.present == 'true'
+        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2
+        with:
+          tool: cargo-deny
+
+      - name: Cargo licence gate (ADR-0003)
+        if: steps.cargo.outputs.present == 'true'
+        timeout-minutes: 5
+        run: |
+          status=0
+          while IFS= read -r lock; do
+            dir="$(dirname "$lock")"
+            if [ ! -f "$dir/deny.toml" ]; then
+              echo "::error::$dir/Cargo.lock has no deny.toml; its crates cannot be classified"
+              status=1
+              continue
+            fi
+            echo "==> cargo deny check licenses ($dir)"
+            (cd "$dir" && cargo deny check licenses) || status=1
+          done < "$RUNNER_TEMP/cargo-workspaces.txt"
+          exit "$status"
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -329,7 +373,7 @@ jobs:
                   return max(map(licence_class, tokens), default=0)
 
 
-          failures, waived, unknown = [], [], 0
+          failures, waived, unknown, delegated = [], [], 0, 0
           packages = [p for p in sbom.get("packages", []) if p.get("SPDXID") not in own]
           missing_maven = {
               ref.get("referenceLocator")
@@ -368,6 +412,11 @@ jobs:
               if not expressions and pkg.get("name") in first_party:
                   expressions = [first_party[pkg["name"]]]
               if not expressions:
+                  # Syft has no Rust remote-licence lookup, so every crate would be "unknown".
+                  # The Cargo licence gate above decides these against the same allow list.
+                  if purls and all(p.startswith("pkg:cargo/") for p in purls):
+                      delegated += 1
+                      continue
                   unknown += 1
                   if is_allowed(pkg.get("name") or ""):
                       waived.append(
@@ -389,6 +438,7 @@ jobs:
 
           lines = [
               f"{len(packages)} packages, {unknown} without licence data, "
+              f"{delegated} delegated to cargo deny, "
               f"{len(waived)} allow-listed amber, {len(failures)} violation(s)",
               *waived,
               *failures,
