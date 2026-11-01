@@ -11,6 +11,7 @@
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins (second batch)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify the golden-path templates (P1 task 1.4)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Add the Java 25 toolchain to the templates job (P1 task 1.4)
 name: ci-backend
 
 on:
@@ -201,7 +202,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.templates == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -211,9 +212,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Golden-path templates (lint, types and tests)
-        timeout-minutes: 8 # composite of three template gates: recorded exception to the 3-minute rule (MSG-027)
+        timeout-minutes: 15 # composite of the Python and Java template gates; the Java build is compile-inclusive (MSG-027)
         run: bash scripts/ci/run-templates.sh
 
   java:

@@ -1,0 +1,15 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Service entry point
+package africa.vigil.templates.service;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+
+@SpringBootApplication
+@ConfigurationPropertiesScan
+public class ServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ServiceApplication.class, args);
+    }
+}
