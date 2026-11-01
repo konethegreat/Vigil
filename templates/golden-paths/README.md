@@ -1,5 +1,6 @@
 <!-- Written by Kone Tshivhinda (Qoder) on 2026-10-31 — Golden-path template contract and language rollout (P1 task 1.4) -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Java 25 templates are available; state the coverage metric per stack -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — TypeScript templates are available; state the TypeScript version hold -->
 
 # Golden-path templates
 
@@ -24,13 +25,13 @@ deployed from this folder.
 | Warden | Binding stub that builds a `PolicyContext`; it fails closed until the P3 binding is wired | INSTRUCTIONS §9.1; ADR-0005 |
 | OpenTelemetry | OTLP export only when an in-boundary collector endpoint is configured; no SaaS exporters and no required egress | BACKEND_GUIDE §9.2; INSTRUCTIONS §9.8 |
 | SBOM | Committed lockfile and pinned dependency floors so Syft can inventory the project | INSTRUCTIONS §6.5; ADR-0003 |
-| Tests | Runnable offline, at least 85 % coverage, 100 % for the policy module; the metric is the one the stack's coverage tool enforces (branch for Python, line for JaCoCo) | BACKEND_GUIDE §1 B8 |
+| Tests | Runnable offline, at least 85 % coverage, 100 % for the policy module; the metric is the one the stack's coverage tool enforces (branch for Python, line for JaCoCo, statements and branches for Vitest) | BACKEND_GUIDE §1 B8 |
 
 ## Shapes
 
 | Shape | Has HTTP | Health endpoints | Warden | Use it for |
 |---|---|---|---|---|
-| `service` | Yes (FastAPI or Spring Boot) | Yes | Binding stub in-process | Request-serving APIs |
+| `service` | Yes (FastAPI, Spring Boot or Fastify) | Yes | Binding stub in-process | Request-serving APIs |
 | `library` | No | Not applicable | Receives a `PolicyContext`, never constructs one | Shared code imported by services and jobs |
 | `job` | No | Not applicable | Binding stub in-process | One-shot batch work |
 
@@ -44,7 +45,7 @@ owns configuration and the policy context, and passes both explicitly
 |---|---|---|---|
 | Python 3.13 | Available | `python/service`, `python/library`, `python/job` | P1 |
 | Java 25 | Available | `java/service`, `java/library`, `java/job` | P1 |
-| TypeScript 7 | Planned | Service and library; jobs only if a Node runtime job appears | P1, before P10 |
+| TypeScript 6.0.3 | Available | `typescript/service`, `typescript/library` | P1, before P10 |
 | Rust | Planned | Library and job; service only if a gRPC/REST listener is needed | P1, with P3 |
 | Go | Planned | Service, library and job | P1, with P20 |
 | Kotlin | Planned | Field app module, not a service | P1, with P27 |
@@ -88,6 +89,23 @@ exist yet is listed as planned, not silently omitted.
 6. Add the service to `docker-compose.dev.yml`, `ci-backend.yml` and
    `docs/RUNNING_VIGIL.md` in the same change that makes it deployable.
 
+## Copying a TypeScript template
+
+1. Copy one shape directory (`service` or `library`) into the target service
+   directory and remove its `node_modules`, `dist` and `coverage` folders. Its
+   `pnpm-workspace.yaml` lists `.`, so the copy is its own pnpm root.
+2. Rename the package in `package.json`; for a service, also set
+   `VIGIL_SERVICE_NAME`.
+3. Replace the example route or operation with the real contract. Keep the
+   health paths, the `authorize(...)` call on data-bearing routes and the
+   `kms://`-only checks unchanged.
+4. Replace `UnavailableWarden` with the P3 binding. Never add an allow-all mode
+   or a bypass flag.
+5. Run `pnpm install` after changing dependencies and commit `pnpm-lock.yaml`
+   with the change.
+6. Add the service to `docker-compose.dev.yml`, `ci-backend.yml` and
+   `docs/RUNNING_VIGIL.md` in the same change that makes it deployable.
+
 ## Verification
 
 `scripts/ci/run-templates.sh` runs every template check that CI runs, in one
@@ -115,6 +133,20 @@ cd templates/golden-paths/java
 `check` compiles, tests and enforces JaCoCo: 85 % line coverage per module and
 100 % for each `policy` package. The library holds 100 % overall. Java gates on
 line coverage, the same rule Core uses; Python gates on branch coverage.
+
+The TypeScript shapes are two standalone pnpm roots:
+
+```bash
+cd templates/golden-paths/typescript/library   # or service
+pnpm install --frozen-lockfile
+pnpm run check
+```
+
+`check` runs Prettier, ESLint, `tsc --noEmit`, Vitest with coverage and the
+build. Vitest gates on statements, branches, functions and lines at 85 %, with
+100 % on `src/policy.ts`; the library holds 100 % overall. TypeScript 7 is held
+until `typescript-eslint` widens its peer range past `<6.1.0`, so the templates
+pin 6.0.3, the version the cockpit builds with.
 
 The service and job templates also assert that a protected path returns `503`
 (or, for a job, exit code `3`) while the Warden binding is unavailable. That is

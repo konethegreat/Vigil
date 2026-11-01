@@ -1,0 +1,5 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Keep generated output out of the formatter
+dist/
+coverage/
+node_modules/
+pnpm-lock.yaml

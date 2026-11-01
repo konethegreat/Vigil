@@ -1,0 +1,4 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Standalone workspace root for the library template (P1 task 1.4)
+# Each template is its own pnpm root so copying one shape into a service does not depend on this repository's workspace.
+packages:
+  - "."

@@ -12,6 +12,7 @@
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify the golden-path templates (P1 task 1.4)
 # Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Add the Java 25 toolchain to the templates job (P1 task 1.4)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Add the Node 24 and pnpm toolchains to the templates job (P1 task 1.4)
 name: ci-backend
 
 on:
@@ -29,6 +30,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.13"
   JAVA_VERSION: "25"
+  NODE_VERSION: "24" # Node 24 LTS (INSTRUCTIONS §6)
   ANDROID_JAVA_VERSION: "21" # LTS supported by the Android Gradle Plugin; P27 may raise it
   GO_VERSION: "1.27.1"
   GOLANGCI_LINT_VERSION: "v2.14.0"
@@ -217,9 +219,17 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: templates/golden-paths/typescript/service/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: "templates/golden-paths/typescript/**/pnpm-lock.yaml"
 
       - name: Golden-path templates (lint, types and tests)
-        timeout-minutes: 15 # composite of the Python and Java template gates; the Java build is compile-inclusive (MSG-027)
+        timeout-minutes: 15 # composite of the Python, Java and TypeScript template gates; the Java build is compile-inclusive (MSG-027)
         run: bash scripts/ci/run-templates.sh
 
   java:
