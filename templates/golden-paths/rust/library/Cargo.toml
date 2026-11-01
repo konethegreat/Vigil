@@ -1,0 +1,22 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Library golden-path crate (P1 task 1.4)
+
+[package]
+name = "vigil-library-template"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "vigil_library_template"
+
+[dependencies]
+opentelemetry.workspace = true
+
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true

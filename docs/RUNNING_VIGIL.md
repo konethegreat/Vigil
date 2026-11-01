@@ -151,7 +151,7 @@ uv run mypy --strict vigil_mind
 uv run pytest --cov=vigil_mind --cov-branch --cov-report=term-missing --cov-fail-under=85
 ```
 
-`just lint` and `just test` run these gates together with Spotless and the JaCoCo line-coverage verification (85% minimum, enforced by `check`); `just validate` runs the compliance validator. The golden-path templates under `templates/golden-paths/` run in the same gates: the Python shapes are standalone uv projects, the TypeScript shapes are standalone pnpm projects and the Java shapes are one Gradle build. `bash scripts/ci/run-templates.sh` (or `just templates`) checks them on their own and skips a language whose toolchain is not installed here.
+`just lint` and `just test` run these gates together with Spotless and the JaCoCo line-coverage verification (85% minimum, enforced by `check`); `just validate` runs the compliance validator. The golden-path templates under `templates/golden-paths/` run in the same gates: the Python shapes are standalone uv projects, the TypeScript shapes are standalone pnpm projects, the Rust shapes are one cargo workspace and the Java shapes are one Gradle build. `bash scripts/ci/run-templates.sh` (or `just templates`) checks them on their own and skips a language whose toolchain is not installed here.
 
 From `templates/golden-paths/java` with JDK 25:
 
@@ -164,6 +164,15 @@ From `templates/golden-paths/typescript/library` or `.../service` with Node 24 a
 ```powershell
 pnpm install --frozen-lockfile
 pnpm run check
+```
+
+From `templates/golden-paths/rust` with Rust 1.99.1, cargo-deny and cargo-llvm-cov:
+
+```powershell
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo deny check
+cargo llvm-cov --workspace --locked --fail-under-lines 85
 ```
 
 The Java tests use a separate temporary PostgreSQL database and a separate Mind service with baseline planning, regardless of the demonstration model settings. Add `--rerun-tasks` after `gradle` when you need to force execution against a recreated test database rather than accept Gradle's up-to-date result. The HTTP acceptance script creates a clearly named synthetic mission in the running operations workspace and leaves the completed record as evidence. It is restricted to localhost. The smoke run is easiest with the default baseline planner; configured local models make it slower. Actual browser coverage and acceptance results are recorded in `MISSION_INCREMENT.md`.

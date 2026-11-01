@@ -1,0 +1,30 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Job golden-path crate (P1 task 1.4)
+
+[package]
+name = "vigil-job-template"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "vigil_job_template"
+
+[[bin]]
+name = "vigil-job-template"
+path = "src/main.rs"
+
+[dependencies]
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-otlp.workspace = true
+# Enables the TLS backend for the OTLP HTTPS client; the job does not call reqwest directly.
+reqwest.workspace = true
+
+[dev-dependencies]
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
+
+[lints]
+workspace = true
