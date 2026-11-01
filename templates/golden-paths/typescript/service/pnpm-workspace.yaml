@@ -1,4 +1,10 @@
 # Written by Kone Tshivhinda (Qoder) on 2026-11-01 — Standalone workspace root for the service template (P1 task 1.4)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Clear GHSA-g3hv-75wg-m249 (minimatch)
 # Each template is its own pnpm root so copying one shape into a service does not depend on this repository's workspace.
 packages:
   - "."
+overrides:
+  # The advisory has no 10.x fix, and a global override would push minimatch 11 into ESLint 9,
+  # whose @eslint/config-array calls the 3.x API. typescript-estree only uses minimatch(), which
+  # 11.x still exports.
+  "minimatch@^10.0.0": 11.0.3

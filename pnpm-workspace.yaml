@@ -2,6 +2,7 @@
 # Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - Recovery verification
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Pin patched transitive packages
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Override vite to 8.3.5 (GHSA-rq7h-c2jc-7f22 and 5 more; patched 8.3.3)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 - Clear the zod and minimatch advisories (P1 follow-up)
 packages:
   - apps/*
 allowBuilds:
@@ -10,3 +11,8 @@ overrides:
   sharp: 0.35.5
   source-map-js: 1.2.2
   vite: 8.3.5
+  zod: 4.6.6
+  # GHSA-g3hv-75wg-m249 has no 10.x fix, and a global override would push minimatch 11 into
+  # ESLint 9, whose @eslint/config-array calls the 3.x API. Only typescript-estree moves, and
+  # it uses just the minimatch() function, which 11.x still exports.
+  "minimatch@^10.0.0": 11.0.3

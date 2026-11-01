@@ -29,6 +29,12 @@ their services.
 When a hold is lifted, raise it here, in both `package.json` files and in the
 root Dependabot ignore rules in the same change.
 
+Both shapes also carry one override in their `pnpm-workspace.yaml`: minimatch
+`^10` resolves to 11.0.3 to clear GHSA-g3hv-75wg-m249, which has no 10.x fix.
+`typescript-eslint` declares `^10.2.2` and uses only the `minimatch()` function,
+which 11.x still exports. Remove the override once `typescript-eslint` accepts
+11 itself.
+
 ## Verify
 
 From this folder, for each shape:
