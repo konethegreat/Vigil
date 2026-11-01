@@ -8,6 +8,8 @@ import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.SdkTracerProviderBuilder;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
+import io.opentelemetry.sdk.trace.export.SpanExporter;
+import java.util.Optional;
 
 /**
  * Builds the tracing provider.
@@ -23,6 +25,16 @@ public final class Telemetry {
 
     private Telemetry() {}
 
+    /** The OTLP exporter, or empty when no collector is configured (no export, no egress). */
+    public static Optional<SpanExporter> exporter(Settings settings) {
+        if (settings.otelEndpoint() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(OtlpHttpSpanExporter.builder()
+                .setEndpoint(settings.otelEndpoint())
+                .build());
+    }
+
     public static SdkTracerProvider provider(Settings settings) {
         SdkTracerProviderBuilder builder = SdkTracerProvider.builder()
                 .setResource(Resource.getDefault()
@@ -30,12 +42,8 @@ public final class Telemetry {
                                 .put(SERVICE_NAME, settings.serviceName())
                                 .put(DEPLOYMENT_ENVIRONMENT, settings.environment())
                                 .build())));
-        if (settings.otelEndpoint() != null) {
-            builder.addSpanProcessor(BatchSpanProcessor.builder(OtlpHttpSpanExporter.builder()
-                            .setEndpoint(settings.otelEndpoint())
-                            .build())
-                    .build());
-        }
+        exporter(settings).ifPresent(spanExporter ->
+                builder.addSpanProcessor(BatchSpanProcessor.builder(spanExporter).build()));
         return builder.build();
     }
 }

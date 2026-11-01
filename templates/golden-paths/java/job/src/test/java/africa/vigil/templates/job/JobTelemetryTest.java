@@ -14,19 +14,20 @@ class JobTelemetryTest {
     }
 
     @Test
-    void staysOffWithoutAnEndpoint() {
-        try (SdkTracerProvider provider = Telemetry.provider(settings(null))) {
-            provider.get("test").spanBuilder("vigil.test").startSpan().end();
-            assertThat(provider).isNotNull();
-        }
+    void installsNoExporterWithoutAnEndpoint() {
+        assertThat(Telemetry.exporter(settings(null))).isEmpty();
     }
 
     @Test
-    void exportsToTheConfiguredCollector() {
-        try (SdkTracerProvider provider =
-                Telemetry.provider(settings("http://collector.invalid:4318/v1/traces"))) {
+    void installsTheExporterForTheConfiguredCollector() {
+        assertThat(Telemetry.exporter(settings("http://collector.invalid:4318/v1/traces")))
+                .isPresent();
+    }
+
+    @Test
+    void buildsAProviderWithNoEndpoint() {
+        try (SdkTracerProvider provider = Telemetry.provider(settings(null))) {
             provider.get("test").spanBuilder("vigil.test").startSpan().end();
-            assertThat(provider).isNotNull();
         }
     }
 }

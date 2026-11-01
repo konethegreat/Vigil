@@ -6,9 +6,9 @@
 # Each Python template is a standalone uv project; the Java templates are one
 # Gradle build with three modules. The script runs the same gates the template
 # READMEs document, so a template cannot rot unnoticed.
-# Exits 1 if any gate fails. CI runs it from ci-backend.yml; run-backend.sh calls
-# it for `just lint` and `just test`. A language whose toolchain is absent here is
-# skipped with a warning; GitHub Actions installs every toolchain and runs them all.
+# Exits 1 if any gate fails, 3 when a language was skipped for a missing
+# toolchain and nothing failed, 0 otherwise. GitHub Actions installs every
+# toolchain, so it only ever sees 0 or 1; run-backend.sh maps 3 to a SKIP row.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
@@ -100,11 +100,13 @@ else
   fi
 fi
 
-if [ "$SKIPPED" -eq 1 ]; then
-  echo "WARNING: some templates were skipped because their toolchain is missing here."
-fi
 if [ "$FAILED" -eq 1 ]; then
   echo "RESULT: FAIL"
   exit 1
+fi
+if [ "$SKIPPED" -eq 1 ]; then
+  echo "WARNING: some templates were skipped because their toolchain is missing here."
+  echo "RESULT: SKIP (partial)"
+  exit 3
 fi
 echo "RESULT: PASS"

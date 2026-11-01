@@ -15,11 +15,11 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-validation")
 
-    // OTLP export only happens when the endpoint setting is present; see TelemetryConfiguration.
-    implementation(platform(libs.opentelemetry.bom))
-    implementation(libs.opentelemetry.api)
-    implementation(libs.opentelemetry.sdk)
-    implementation(libs.opentelemetry.exporter.otlp)
+    // Boot's dependency management owns these versions (1.62.0 with Boot 4.1.2). A platform
+    // import here would lose to it and silently pin nothing, so the service declares no version.
+    implementation("io.opentelemetry:opentelemetry-api")
+    implementation("io.opentelemetry:opentelemetry-sdk")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     // Boot 4 keeps the webmvc test autoconfiguration in its own module.

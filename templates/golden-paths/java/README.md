@@ -17,9 +17,10 @@ deployed.
   an older JDK instead of silently compiling for the wrong target.
 - The committed Gradle wrapper (9.8.2). Do not install Gradle globally; the
   wrapper jar is the same pinned binary as the repository root wrapper.
-- The first build resolves Maven Central. After that, `gradle.lockfile` in each
-  module and `settings-gradle.lockfile` fail the build if a dependency resolves
-  to a version that is not committed.
+- The first build resolves Maven Central. After that, each module's committed
+  `gradle.lockfile` fails the build if a dependency resolves to a version that
+  is not committed. `settings-gradle.lockfile` is the generated lock state for
+  the version catalog; keep it committed when `--write-locks` updates it.
 
 ## Modules
 
@@ -29,8 +30,11 @@ deployed.
 | `library` | Plain Java library | Caller-supplied `PolicyContext` and settings, OpenTelemetry API only |
 | `job` | `application` plugin, one-shot | Exit-code contract, validated environment, opt-in OTLP |
 
-Versions are declared once in `gradle/libs.versions.toml`: Spring Boot 4.1.2,
-OpenTelemetry 1.67.0, JUnit 6.1.3 and AssertJ 3.27.7.
+`gradle/libs.versions.toml` pins Spring Boot 4.1.2, JUnit 6.1.3 and AssertJ
+3.27.7, and the library and job take OpenTelemetry 1.67.0 from it. The service
+follows Spring Boot's managed OpenTelemetry (1.62.0 with Boot 4.1.2): Boot's
+dependency management overrides a platform import, so the service declares the
+OpenTelemetry coordinates without a version.
 
 ## Verify
 
@@ -69,8 +73,10 @@ binding lands, not a bug and not a test to delete.
 The service and job create an `SdkTracerProvider` with only `service.name` and
 `deployment.environment.name` as resource attributes. An OTLP span processor is
 added only when `VIGIL_OTEL_ENDPOINT` is set, so the default configuration makes
-no outbound call. Spans carry `vigil.tenant` and `vigil.purpose` and nothing
-from the payload.
+no outbound call. The job's `Execute` and the library's `Summaries` record spans
+carrying `vigil.tenant` and `vigil.purpose` and nothing from the payload. The
+service exposes a `Tracer` bean for its routes; like the Python service, the
+example route does not start a span yet.
 
 ## When copying
 

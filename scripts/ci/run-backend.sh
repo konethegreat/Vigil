@@ -108,13 +108,24 @@ python_gates() {
 }
 
 templates_gates() {
+  local status=0
   if [ ! -d templates/golden-paths/python ] && [ ! -f templates/golden-paths/java/settings.gradle.kts ]; then
     record templates SKIP "no golden-path templates yet (P1 task 1.4)"
     return 0
   fi
-  # run-templates.sh skips a language whose toolchain is absent and says so.
-  gate templates "golden-path templates (MODE=$MODE)" \
-    bash scripts/ci/run-templates.sh || true
+  printf '\n==> [templates] golden-path templates (MODE=%s)\n    $ bash scripts/ci/run-templates.sh\n' "$MODE"
+  bash scripts/ci/run-templates.sh || status=$?
+  case "$status" in
+    0) record templates PASS "golden-path templates (MODE=$MODE)" ;;
+    3)
+      record templates SKIP "a template toolchain is missing here (GitHub Actions still runs it)"
+      TOOL_SKIPS=1
+      ;;
+    *)
+      record templates FAIL "golden-path templates (MODE=$MODE)"
+      FAILED=1
+      ;;
+  esac
 }
 
 java_gates() {
