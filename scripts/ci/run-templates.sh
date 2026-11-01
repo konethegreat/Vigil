@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Written by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify every golden-path template (P1 task 1.4)
 # Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Add the Java 25 templates (P1 task 1.4)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Add the TypeScript templates (P1 task 1.4)
 #
 # Usage: [MODE=all|lint|test] scripts/ci/run-templates.sh
-# Each Python template is a standalone uv project; the Java templates are one
-# Gradle build with three modules. The script runs the same gates the template
-# READMEs document, so a template cannot rot unnoticed.
+# Each Python template is a standalone uv project, each TypeScript shape is a
+# standalone pnpm root, and the Java templates are one Gradle build with three
+# modules. The script runs the same gates the template READMEs document, so a
+# template cannot rot unnoticed.
 # Exits 1 if any gate fails, 3 when a language was skipped for a missing
 # toolchain and nothing failed, 0 otherwise. GitHub Actions installs every
 # toolchain, so it only ever sees 0 or 1; run-backend.sh maps 3 to a SKIP row.
@@ -97,6 +99,55 @@ else
     if ! (cd "$JAVA_PROJECT" && ./gradlew --no-daemon --console=plain "${tasks[@]}"); then
       FAILED=1
     fi
+  fi
+fi
+
+# TypeScript: two standalone pnpm roots (library and service).
+TS_PROJECT="templates/golden-paths/typescript"
+
+node_major() {
+  command -v node > /dev/null 2>&1 || return 1
+  node -p 'process.versions.node.split(".")[0]' 2>/dev/null
+}
+
+if [ ! -d "$TS_PROJECT" ]; then
+  echo "SKIP: $TS_PROJECT is not present"
+elif ! command -v pnpm > /dev/null 2>&1; then
+  echo "SKIP: the TypeScript templates need pnpm, which is not installed here (GitHub Actions still runs this gate)"
+  SKIPPED=1
+else
+  major="$(node_major || true)"
+  case "$major" in
+    '' | *[!0-9]*) major=0 ;;
+  esac
+  if [ "$major" -lt 24 ]; then
+    echo "SKIP: the TypeScript templates need Node 24 LTS or newer (found: ${major:-none}; GitHub Actions still runs this gate)"
+    SKIPPED=1
+  else
+    for shape in library service; do
+      project="$TS_PROJECT/$shape"
+      if [ ! -f "$project/package.json" ]; then
+        echo "SKIP: $project is not present"
+        continue
+      fi
+      echo
+      echo "==> [templates] typescript/$shape ($project)"
+      if ! (
+        cd "$project"
+        pnpm install --frozen-lockfile
+        case "$MODE" in
+          lint)
+            pnpm run format:check
+            pnpm run lint
+            pnpm run typecheck
+            ;;
+          test) pnpm run test:coverage ;;
+          all) pnpm run check ;;
+        esac
+      ); then
+        FAILED=1
+      fi
+    done
   fi
 fi
 
