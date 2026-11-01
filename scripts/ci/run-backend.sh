@@ -3,6 +3,7 @@
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — MODE=lint|test for the P1 `just lint` / `just test` surface
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Add the mypy --strict and branch-coverage MUST gates (P1 task 1.7)
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Verify golden-path templates (P1 task 1.4)
+# Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Run the Java templates through the same gate (P1 task 1.4)
 #
 # Usage: [MODE=all|lint|test] scripts/ci/run-backend.sh [all | python | java | rust | go | kotlin | elixir | proto | templates ...]
 # MODE defaults to all, which is what CI runs. lint selects formatters, linters and static checks;
@@ -107,11 +108,11 @@ python_gates() {
 }
 
 templates_gates() {
-  [ -d templates/golden-paths/python ] || {
+  if [ ! -d templates/golden-paths/python ] && [ ! -f templates/golden-paths/java/settings.gradle.kts ]; then
     record templates SKIP "no golden-path templates yet (P1 task 1.4)"
     return 0
-  }
-  have templates uv || return 0
+  fi
+  # run-templates.sh skips a language whose toolchain is absent and says so.
   gate templates "golden-path templates (MODE=$MODE)" \
     bash scripts/ci/run-templates.sh || true
 }

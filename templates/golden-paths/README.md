@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (Qoder) on 2026-10-31 — Golden-path template contract and language rollout (P1 task 1.4) -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-01 — Java 25 templates are available; state the coverage metric per stack -->
 
 # Golden-path templates
 
@@ -23,13 +24,13 @@ deployed from this folder.
 | Warden | Binding stub that builds a `PolicyContext`; it fails closed until the P3 binding is wired | INSTRUCTIONS §9.1; ADR-0005 |
 | OpenTelemetry | OTLP export only when an in-boundary collector endpoint is configured; no SaaS exporters and no required egress | BACKEND_GUIDE §9.2; INSTRUCTIONS §9.8 |
 | SBOM | Committed lockfile and pinned dependency floors so Syft can inventory the project | INSTRUCTIONS §6.5; ADR-0003 |
-| Tests | Runnable offline, at least 85 % branch coverage, 100 % for the policy module | BACKEND_GUIDE §1 B8 |
+| Tests | Runnable offline, at least 85 % coverage, 100 % for the policy module; the metric is the one the stack's coverage tool enforces (branch for Python, line for JaCoCo) | BACKEND_GUIDE §1 B8 |
 
 ## Shapes
 
 | Shape | Has HTTP | Health endpoints | Warden | Use it for |
 |---|---|---|---|---|
-| `service` | Yes, FastAPI | Yes | Binding stub in-process | Request-serving APIs |
+| `service` | Yes (FastAPI or Spring Boot) | Yes | Binding stub in-process | Request-serving APIs |
 | `library` | No | Not applicable | Receives a `PolicyContext`, never constructs one | Shared code imported by services and jobs |
 | `job` | No | Not applicable | Binding stub in-process | One-shot batch work |
 
@@ -42,7 +43,7 @@ owns configuration and the policy context, and passes both explicitly
 | Language | Status | Templates | Owner |
 |---|---|---|---|
 | Python 3.13 | Available | `python/service`, `python/library`, `python/job` | P1 |
-| Java 25 | Planned | Same three shapes, Spring Boot 4 layout | P1, before P3 |
+| Java 25 | Available | `java/service`, `java/library`, `java/job` | P1 |
 | TypeScript 7 | Planned | Service and library; jobs only if a Node runtime job appears | P1, before P10 |
 | Rust | Planned | Library and job; service only if a gRPC/REST listener is needed | P1, with P3 |
 | Go | Planned | Service, library and job | P1, with P20 |
@@ -71,7 +72,27 @@ exist yet is listed as planned, not silently omitted.
 7. Add the service to `docker-compose.dev.yml`, `ci-backend.yml` and
    `docs/RUNNING_VIGIL.md` in the same change that makes it deployable.
 
+## Copying a Java template
+
+1. Copy one shape directory (`service`, `library` or `job`) into the target
+   service directory.
+2. Replace the `africa.vigil.templates.<shape>` package and the `group` in
+   `build.gradle.kts`; keep the JaCoCo policy-package rule aligned with the new
+   package name.
+3. Replace the example route or work unit with the real contract. Keep the
+   health paths, the policy seam and the `kms://`-only checks unchanged.
+4. Replace `UnavailableWarden` with the P3 binding. Never add an allow-all mode
+   or a bypass flag.
+5. After changing dependencies run `./gradlew --write-locks` and commit the
+   updated `gradle.lockfile` with the change.
+6. Add the service to `docker-compose.dev.yml`, `ci-backend.yml` and
+   `docs/RUNNING_VIGIL.md` in the same change that makes it deployable.
+
 ## Verification
+
+`scripts/ci/run-templates.sh` runs every template check that CI runs, in one
+place; `just templates` calls it. A language whose toolchain is absent is
+skipped with a warning, and GitHub Actions installs every toolchain.
 
 Each Python template is a standalone uv project:
 
@@ -84,9 +105,20 @@ uv run mypy --strict src
 uv run pytest --cov=vigil_<package> --cov-branch --cov-fail-under=85
 ```
 
+The Java templates are one Gradle build with three modules:
+
+```bash
+cd templates/golden-paths/java
+./gradlew --no-daemon check
+```
+
+`check` compiles, tests and enforces JaCoCo: 85 % line coverage per module and
+100 % for each `policy` package. The library holds 100 % overall. Java gates on
+line coverage, the same rule Core uses; Python gates on branch coverage.
+
 The service and job templates also assert that a protected path returns `503`
-while the Warden binding is unavailable. That is the expected state until P3
-lands; it is not a test to delete.
+(or, for a job, exit code `3`) while the Warden binding is unavailable. That is
+the expected state until P3 lands; it is not a test to delete.
 
 ## Rules that templates must not soften
 
