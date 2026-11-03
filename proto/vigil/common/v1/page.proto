@@ -1,0 +1,28 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common pagination types (P2 task 2.2)
+syntax = "proto3";
+
+package vigil.common.v1;
+
+// PageRequest is the common pagination input for list calls (API_DESIGN §A.4).
+//
+// These are query parameters on GET and body fields on POST.
+message PageRequest {
+  // Maximum rows to return. 0 means the server default of 100. The maximum is
+  // 500; a larger value is VALIDATION_FAILED.
+  int32 page_size = 1;
+  // Opaque signed continuation token. It is bound to the tenant, principal,
+  // policy-context hash and query hash, and is valid for 15 minutes. A token
+  // presented with a changed context or query is PAGE_TOKEN_INVALID.
+  string page_token = 2;
+}
+
+// PageInfo is the common pagination output. Responses carry it alongside their
+// own repeated data field.
+message PageInfo {
+  // Continuation token for the next page. Empty on the last page.
+  string next_page_token = 1;
+  // Approximate number of rows visible to the caller, absent when the server
+  // does not compute it. It never counts invisible rows. As a 64-bit integer
+  // it is a JSON string (API_DESIGN §A.3).
+  optional int64 total_estimate = 2;
+}

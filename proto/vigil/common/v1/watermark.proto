@@ -1,0 +1,13 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common watermark type (P2 task 2.2)
+syntax = "proto3";
+
+package vigil.common.v1;
+
+// Watermark identifies a point in the edit stream that a read has observed.
+//
+// The value is opaque and starts with wm1_ (API_DESIGN §A.9). Clients store
+// and return it verbatim; they never parse it.
+message Watermark {
+  // Opaque watermark token.
+  string value = 1;
+}

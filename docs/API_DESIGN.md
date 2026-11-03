@@ -1,6 +1,7 @@
 <!-- Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Authoritative API conventions, endpoint specifications (OMS, objects, actions, functions, datasets, policy, audit, Mind, ER, cases) and event catalogue (P0) -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-25 - First mission increment and recovery record -->
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation API append record -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Added §A.12 common contract types (P2) -->
 
 # Vigil — API Design
 
@@ -227,6 +228,24 @@ A pseudonym is its own property (for example `id_psn`), filterable under W1–W2
 2. Every call emits an audit event: `<domain>.<verb>` with actor, purpose, case, resource RID, decision, and query hash or row count. Denials are audited too.
 3. Request and response bodies are never logged. Errors never leak existence (W11).
 4. Agents call through the same endpoints with the same checks, *as the user*. Only `agent_executable` actions without approval can be applied by an agent; everything else is staged (Blueprint §1.7).
+
+### A.12 Common contract types (P2)
+
+The shared wire types live in `proto/vigil/common/v1` (MSG-010). Domain packages import them and MUST NOT redefine them locally.
+
+| Type | File | Purpose |
+|---|---|---|
+| `ResourceId` | `rid.proto` | Opaque RID string (Blueprint §1.2) |
+| `Classification`, `MarkingSet`, `Purpose`, `PolicyContext` | `security.proto` | Verified security context that Warden evaluates on every read and write |
+| `PageRequest`, `PageInfo` | `page.proto` | Pagination input and output (§A.4) |
+| `VigilError`, `ErrorCode`, `ErrorDetail`, `ErrorDetailType` | `error.proto` | Canonical error envelope and catalogue (§A.6) |
+| `Watermark` | `watermark.proto` | Opaque edit-stream watermark (§A.9) |
+
+- **Published enum codes.** Protobuf enum values carry the enum-name prefix that `buf lint` STANDARD requires. The published API code is the value without that prefix: `CLASSIFICATION_PUBLIC` is `PUBLIC`, `ERROR_CODE_LINKAGE_LOCKED` is `LINKAGE_LOCKED`, and `ERROR_DETAIL_TYPE_GATE` is `GATE`. Generated OpenAPI and SDKs apply the same rule. `*_UNSPECIFIED` is a sentinel and is never an API code.
+- **Classification levels.** The storage and CloudEvents level is the enum value minus one: `PUBLIC` is 0 and `TOP_SECRET` is 4 (Blueprint §4.2; DATA_MODEL §1 item 8). A missing classification denies; it never defaults to `PUBLIC` (W11).
+- **Policy context.** `PolicyContext.principal` uses the typed principal strings `user:<sub>`, `svc:<service>` or `agent:<session-id>` (DATA_MODEL §1 item 6). `context_hash` is the verified `pch` of DATA_MODEL §12, computed once per request through the Warden binding and reused for cache keys, audit events and page tokens. `justification_id` is the only justification material on the wire; the text never is.
+- **Pagination.** `PageRequest.page_size` defaults to 100 and is capped at 500; `PageInfo.total_estimate` is present only when computed and counts visible rows only.
+- **Errors.** `VigilError.error` carries the published code, `status_code` repeats the HTTP status, and `details` carry structured reasons. The message never discloses property values, names of invisible resources or markings the caller does not hold.
 
 ---
 
@@ -893,3 +912,4 @@ Structured-mode example (debugging tap only):
 | 2026-09-25 | P0 | Kone Tshivhinda (Claude Opus 5.5) | Added Part A conventions (headers, pagination, filter DSL, error format and catalogue, rate limits, redaction, idempotency, watermarks, versioning); OMS-01–05; OBJ-01–03; ACT-01–06; FN-01; DS-01–04; POL-01–03; AUD-01; MIND-01–03; ER-01–03; CASE-01–02; reserved B.11 IDs; events C.2 (11 types). Deprecated: none |
 | 2026-09-25 | Mission increment 01 (ADR-0009) | Kone Tshivhinda (OpenAI Codex GPT-6) | Added implemented local mission/session/audit/export/model-status routes documented in [MISSION_API.md](MISSION_API.md), with create/command payloads in `contracts/mission.schema.json`. These routes are a scoped synthetic increment, not implementation of the full catalogue above. Deprecated: none. |
 | 2026-09-26 | Investigation increment 02 (ADR-0010) | Kone Tshivhinda (OpenAI Codex GPT-6) | Added GET `/api/v1/investigations` and POST `/api/v1/investigations/commands`, forwarded by the Cockpit gateway. Typed source-backed objects, relationship assertions, revision history and scoped provenance; strict command contract in `contracts/investigation.schema.json`. Implemented semantics and limits in [MISSION_API.md](MISSION_API.md). Existing mission routes retained. Deprecated: none. |
+| 2026-11-03 | P2 | Kone Tshivhinda (Qoder) | Added §A.12 common contract types and the Buf v2 workspace (`proto/buf.yaml`) with `ResourceId`, `Classification`, `MarkingSet`, `Purpose`, `PolicyContext`, `PageRequest`/`PageInfo`, `VigilError` and `Watermark`. Deprecated: none |
