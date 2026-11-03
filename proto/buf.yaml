@@ -1,0 +1,10 @@
+# Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Buf v2 workspace for the Vigil contracts (P2 task 2.1)
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

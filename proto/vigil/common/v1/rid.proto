@@ -1,0 +1,25 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common resource identifier (P2 task 2.2)
+syntax = "proto3";
+
+package vigil.common.v1;
+
+// ResourceId identifies one resource by its Vigil resource identifier (RID).
+//
+// The value is opaque to clients except for the <ObjectType> segment of object
+// RIDs. Grammar (VIGIL_DOMAIN_BLUEPRINT §1.2):
+//
+//   ri.<service>.<tenant>.<kind>.<locator>
+//
+// where service is one of ontology, objects, actions, functions, forge,
+// warden, audit, mind, er or cases; tenant is the tenant slug or platform;
+// kind is kebab-case; and locator is a lowercase UUIDv7.
+//
+// Objects are the exception: ri.objects.<tenant>.object.<ObjectType>.<uuid>,
+// where uuid is UUIDv5(object-type UUID, primary key). The same object always
+// has the same RID, so no registry is needed to dereference it.
+//
+// RIDs never contain property values or personal information.
+message ResourceId {
+  // The full RID string. Never empty on a valid resource reference.
+  string value = 1;
+}

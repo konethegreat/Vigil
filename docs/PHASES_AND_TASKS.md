@@ -3,6 +3,7 @@
 <!-- Modified by Kone Tshivhinda (OpenAI Codex GPT-6) on 2026-09-26 - Investigation increment scope and acceptance -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Close P0 after the governance bootstrap merge -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Record the connected operations integration -->
+<!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Recorded the P2 common-types slice and P1 residual blockers -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -108,7 +109,7 @@
 ---
 
 ## P1: Monorepo, Toolchains & Local Dev Environment
-**Status**: 🚀 In Progress — Kone Tshivhinda (Qoder) | Started: 2026-10-31
+**Status**: 🟡 Partial — Kone Tshivhinda (Qoder) | Started: 2026-10-31 | 1.1–1.4 and 1.7 complete; 1.5 remote protections and 1.6 registry-signed base images await owner configuration (MSG-017)
 **Depends On**: P0
 **Blocks**: P2–P43
 **Complexity**: Medium
@@ -131,7 +132,7 @@
 ---
 
 ## P2: Contracts & Interop Foundation
-**Status**: ⬜ Not Started
+**Status**: 🚀 In Progress — Kone Tshivhinda (Qoder) | Started: 2026-11-03
 **Depends On**: P1
 **Blocks**: P3–P31
 **Complexity**: Medium

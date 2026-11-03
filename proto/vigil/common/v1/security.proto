@@ -1,0 +1,91 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common security types: classification, markings, purpose and policy context (P2 task 2.2)
+syntax = "proto3";
+
+package vigil.common.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Classification is the resource classification ladder (VIGIL_DOMAIN_BLUEPRINT §4.2).
+//
+// The storage and CloudEvents level is value - 1, because proto3 reserves 0
+// for the unspecified sentinel: PUBLIC is level 0 and TOP_SECRET is level 4.
+// The published API code is the enum value without the CLASSIFICATION_ prefix
+// (API_DESIGN §A.12), so CLASSIFICATION_PUBLIC is the code PUBLIC.
+//
+// UNSPECIFIED is not an API code. A missing classification denies by default
+// (W11) and MUST NOT be treated as PUBLIC.
+enum Classification {
+  // No classification was supplied. Deny; never default to PUBLIC.
+  CLASSIFICATION_UNSPECIFIED = 0;
+  // Level 0: public and open data.
+  CLASSIFICATION_PUBLIC = 1;
+  // Level 1: internal operational data.
+  CLASSIFICATION_RESTRICTED = 2;
+  // Level 2: personal information and case material.
+  CLASSIFICATION_CONFIDENTIAL = 3;
+  // Level 3: classified-enclave data only.
+  CLASSIFICATION_SECRET = 4;
+  // Level 4: classified-enclave data only.
+  CLASSIFICATION_TOP_SECRET = 5;
+}
+
+// MarkingSet is the set of markings held by a principal or carried by a resource.
+//
+// Markings are conjunctive (W1): a principal must hold every marking on a row.
+// Reserved classes are PII, SPECIAL-PI, CRIMINAL-CONDUCT, CHILD and
+// SECURITY-MEASURE; CASE-<n> is a case compartment; ORG-<x>, PRJ-<x> and
+// <TENANT>-<NAME> are administrator-granted markings (§4.4).
+message MarkingSet {
+  // Marking identifiers. Order is not significant; Warden sorts before hashing.
+  repeated string markings = 1;
+}
+
+// Purpose names a registered processing purpose.
+//
+// The purpose definition, including whether a case is required, lives in the
+// Warden registry (P3). This message carries only the assertion on the wire.
+message Purpose {
+  // Registered purpose code, for example PROCUREMENT_INTEGRITY.
+  string code = 1;
+}
+
+// PolicyContext is the verified security context for one request.
+//
+// It is built once per request from the verified token, the declared purpose
+// or case, and any justification reference (BACKEND_GUIDE §9.1), then
+// evaluated by Warden on every read and write. A missing or invalid context
+// denies (W11). There is no system or bypass context on request paths.
+message PolicyContext {
+  // Authenticated principal: user:<sub>, svc:<service> or agent:<session-id>
+  // (DATA_MODEL §1 item 6).
+  string principal = 1;
+  // Tenant slug. Evaluation never spans tenants.
+  string tenant = 2;
+  // Organisation scope, when the request is organisation-scoped.
+  string org_id = 3;
+  // Markings the principal holds.
+  MarkingSet markings = 4;
+  // Highest classification the principal may read.
+  Classification clearance = 5;
+  // Release communities the principal belongs to. A resource with no
+  // releasability is unrestricted; otherwise at least one community must match.
+  repeated string releasability = 6;
+  // Purposes the principal is registered for.
+  repeated Purpose purposes = 7;
+  // Purpose asserted on this request (X-Vigil-Purpose).
+  Purpose declared_purpose = 8;
+  // Open case that binds the request, when the purpose requires one. Only the
+  // case identifier crosses the wire; case content never does.
+  string case_id = 9;
+  // Discretionary roles checked by OpenFGA.
+  repeated string roles = 10;
+  // Captured justification identifier (W7). The justification text never
+  // crosses the wire, only this identifier and its hash in the audit event.
+  string justification_id = 11;
+  // Evaluation time, supplied by the caller so the policy core stays pure and
+  // free of a clock.
+  google.protobuf.Timestamp evaluation_time = 12;
+  // Verified policy-context hash (pch, DATA_MODEL §12). It is bound into audit
+  // events, cache keys and page tokens; empty until Warden computes it.
+  string context_hash = 13;
+}

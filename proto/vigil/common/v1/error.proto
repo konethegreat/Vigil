@@ -1,0 +1,121 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common error envelope and catalogue (P2 task 2.2)
+syntax = "proto3";
+
+package vigil.common.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// ErrorCode is the machine-readable error catalogue (API_DESIGN §A.6).
+//
+// The published API code is the enum value without the ERROR_CODE_ prefix, so
+// ERROR_CODE_VALIDATION_FAILED is the code VALIDATION_FAILED (API_DESIGN
+// §A.12). UNSPECIFIED is not an API code and is never emitted. Clients MUST
+// tolerate unknown values and treat them by their HTTP class.
+enum ErrorCode {
+  // No code was supplied. Never emitted by the server.
+  ERROR_CODE_UNSPECIFIED = 0;
+  // Malformed request, or an action rejected on submission criteria.
+  ERROR_CODE_VALIDATION_FAILED = 1;
+  // X-Vigil-Purpose is missing or not registered.
+  ERROR_CODE_PURPOSE_REQUIRED = 2;
+  // The purpose is case-predicated and no valid, open, accessible case was given.
+  ERROR_CODE_CASE_REQUIRED = 3;
+  // Token missing, expired or invalid.
+  ERROR_CODE_UNAUTHENTICATED = 4;
+  // Warden or OpenFGA denied: markings, clearance, releasability, purpose,
+  // role, tenant mismatch, separation of duties, or no cleared model.
+  ERROR_CODE_POLICY_DENIED = 5;
+  // A checkpoint needs a justification (POL-02).
+  ERROR_CODE_JUSTIFICATION_REQUIRED = 6;
+  // Immediate application was demanded but the action needs approval.
+  ERROR_CODE_APPROVAL_REQUIRED = 7;
+  // The resource does not exist or is not visible to the caller (W11).
+  ERROR_CODE_NOT_FOUND = 8;
+  // Idempotency key reused with a different body, version conflict, approval
+  // already decided, or transaction not OPEN.
+  ERROR_CODE_CONFLICT = 9;
+  // A staged run, approval request, page token, transaction or download link
+  // expired.
+  ERROR_CODE_EXPIRED = 10;
+  // A platform limit was exceeded.
+  ERROR_CODE_LIMIT_EXCEEDED = 11;
+  // A BLOCK data-quality check failed; the transaction is ABORTED.
+  ERROR_CODE_QUALITY_CHECK_FAILED = 12;
+  // The s57(1)(a) linkage gate is closed for this scope.
+  ERROR_CODE_LINKAGE_LOCKED = 13;
+  // Another gated module lacks an active authorisation.
+  ERROR_CODE_MODULE_GATED = 14;
+  // Rate limit exceeded; see Retry-After.
+  ERROR_CODE_RATE_LIMITED = 15;
+  // Unexpected server error; retry with the same idempotency key.
+  ERROR_CODE_INTERNAL = 16;
+  // The writeback webhook failed or timed out; nothing was committed.
+  ERROR_CODE_WRITEBACK_FAILED = 17;
+  // A dependency is down, for example model serving in no-AI mode.
+  ERROR_CODE_UNAVAILABLE = 18;
+  // The requested watermark was not reached within 2 s.
+  ERROR_CODE_WATERMARK_PENDING = 19;
+  // The synchronous budget ran out before commit; nothing was committed.
+  ERROR_CODE_DEADLINE_EXCEEDED = 20;
+}
+
+// ErrorDetailType classifies one entry in VigilError.details.
+//
+// The published API code is the enum value without the ERROR_DETAIL_TYPE_
+// prefix (API_DESIGN §A.12). UNSPECIFIED is never emitted.
+enum ErrorDetailType {
+  // No type was supplied. Never emitted by the server.
+  ERROR_DETAIL_TYPE_UNSPECIFIED = 0;
+  // A request field failed validation.
+  ERROR_DETAIL_TYPE_FIELD_VIOLATION = 1;
+  // An action submission criterion rejected the run.
+  ERROR_DETAIL_TYPE_CRITERION = 2;
+  // A platform limit was exceeded.
+  ERROR_DETAIL_TYPE_LIMIT = 3;
+  // A policy rule denied the request.
+  ERROR_DETAIL_TYPE_POLICY = 4;
+  // A gated module or linkage check blocked the request.
+  ERROR_DETAIL_TYPE_GATE = 5;
+  // A version or state conflict occurred.
+  ERROR_DETAIL_TYPE_CONFLICT = 6;
+  // The error is retryable; metadata may carry the delay.
+  ERROR_DETAIL_TYPE_RETRY = 7;
+  // An action run is involved; metadata carries its identifier and status.
+  ERROR_DETAIL_TYPE_ACTION_RUN = 8;
+}
+
+// ErrorDetail is one structured explanation attached to a VigilError.
+message ErrorDetail {
+  // The detail class.
+  ErrorDetailType type = 1;
+  // Request field that caused the error, when the detail names one.
+  string field = 2;
+  // Stable reason code, for example PAGE_TOKEN_INVALID.
+  string reason = 3;
+  // Human-readable detail. It never contains property values, names of
+  // invisible resources, or markings the caller does not hold.
+  string message = 4;
+  // Additional structured data, such as limit names or responsible parties.
+  google.protobuf.Struct metadata = 5;
+}
+
+// VigilError is the canonical error envelope (API_DESIGN §A.6).
+//
+// REST renders it as JSON with error carrying the published code, status_code
+// repeating the HTTP status, and details as an array. The message never
+// contains property values, invisible resource names or unheld markings.
+message VigilError {
+  // Machine-readable error code.
+  ErrorCode error = 1;
+  // Human-readable, safely disclosable message.
+  string message = 2;
+  // HTTP status repeated in the body.
+  int32 status_code = 3;
+  // When the error was produced, in RFC 3339 UTC with milliseconds.
+  google.protobuf.Timestamp timestamp = 4;
+  // Mirrors X-Request-Id.
+  string request_id = 5;
+  // Optional structured details.
+  repeated ErrorDetail details = 6;
+}
