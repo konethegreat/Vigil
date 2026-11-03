@@ -1,0 +1,54 @@
+// Written by Kone Tshivhinda (Qoder) on 2026-11-03 — CloudEvents 1.0 event envelope (P2 task 2.3)
+syntax = "proto3";
+
+package vigil.events.v1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+// EventEnvelope is the Vigil CloudEvents 1.0 envelope (API_DESIGN §C.1).
+//
+// Kafka uses binary mode: the attributes travel in ce-* headers and the payload
+// is the record value. This message is the canonical in-process and structured
+// mode form, and the shape the outbox stores. In binary mode the header names
+// use the CloudEvents spelling (ce-specversion, ce-datacontenttype,
+// ce-partitionkey); this message uses proto snake_case fields.
+message EventEnvelope {
+  // CloudEvents specification version. Always "1.0".
+  string spec_version = 1;
+  // Event identifier: a UUIDv7, the outbox event_id.
+  string id = 2;
+  // Producer context: //vigil/<pod>/<tenant>/<service>.
+  string source = 3;
+  // Event type: vigil.<domain>.<entity>.<verb>.v1.
+  string type = 4;
+  // Resource RID the event is about.
+  string subject = 5;
+  // Event time in RFC 3339 UTC with milliseconds.
+  google.protobuf.Timestamp time = 6;
+  // Payload media type. application/protobuf on Kafka; application/json only
+  // for debugging taps.
+  string data_content_type = 7;
+  // Payload schema: urn:vigil:proto:<fully.qualified.Message>. It must match
+  // the type URL inside data.
+  string data_schema = 8;
+  // Thin payload: RIDs, primary keys, counts and property names, never
+  // property values.
+  google.protobuf.Any data = 9;
+  // Tenant slug. CloudEvents extension vigiltenant; never empty.
+  string vigil_tenant = 10;
+  // Classification level 0-4. CloudEvents extension vigilclass. Presence is
+  // required: producers set it explicitly and consumers never infer a label
+  // when it is absent.
+  optional int32 vigil_class = 11;
+  // Marking identifiers. CloudEvents extension vigilmarkings; comma-separated
+  // in binary mode.
+  repeated string vigil_markings = 12;
+  // Observed watermark. CloudEvents extension vigilwatermark.
+  string vigil_watermark = 13;
+  // Kafka partition key. CloudEvents Partitioning extension partitionkey. It
+  // is a RID or another non-personal key, so one aggregate stays ordered.
+  string partition_key = 14;
+  // W3C trace context. CloudEvents Distributed Tracing extension traceparent.
+  string traceparent = 15;
+}
