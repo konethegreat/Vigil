@@ -1,0 +1,71 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - OpenFGA relationship-based access control model for Vigil (P3 task 3.4)
+# OpenFGA schema 1.1 for coarse resource discovery and container membership
+# across organization -> space -> project -> dataset / object_type / action_type / case.
+# Fine-grained label evaluation (<M, C, REL, P>) is enforced by Warden after ReBAC gating.
+
+model
+  schema 1.1
+
+type user
+
+type service_principal
+
+type organization
+  relations
+    define admin: [user]
+    define security_admin: [user]
+    define dpo: [user]
+    define auditor: [user, service_principal]
+    define member: [user, service_principal] or admin or security_admin or dpo
+
+type space
+  relations
+    define org: [organization]
+    define owner: [user] or admin from org
+    define steward: [user] or owner
+    define contributor: [user, service_principal] or steward
+    define viewer: [user, service_principal] or contributor or auditor from org
+
+type project
+  relations
+    define parent_space: [space]
+    define lead: [user] or owner from parent_space
+    define builder: [user, service_principal] or lead
+    define analyst: [user, service_principal] or builder
+    define viewer: [user, service_principal] or analyst or viewer from parent_space
+
+type dataset
+  relations
+    define parent_project: [project]
+    define steward: [user] or lead from parent_project
+    define writer: [user, service_principal] or steward or builder from parent_project
+    define reader: [user, service_principal] or writer or analyst from parent_project
+    define can_write: writer
+    define can_read: reader
+
+type object_type
+  relations
+    define parent_space: [space]
+    define steward: [user] or steward from parent_space
+    define reader: [user, service_principal] or steward or viewer from parent_space
+    define can_govern: steward
+    define can_query: reader
+
+type action_type
+  relations
+    define parent_space: [space]
+    define steward: [user] or steward from parent_space
+    define executor: [user, service_principal] or steward
+    define reviewer: [user] or steward
+    define can_submit: executor
+    define can_approve: reviewer
+
+type case
+  relations
+    define parent_project: [project]
+    define lead_investigator: [user]
+    define investigator: [user] or lead_investigator
+    define legal_reviewer: [user]
+    define can_assign_compartment: lead_investigator
+    define can_read_case: investigator or legal_reviewer
+    define can_close_case: lead_investigator
