@@ -4,6 +4,7 @@
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Added §A.12 common contract types (P2) -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Added the event envelope and AsyncAPI catalogue (P2) -->
 <!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Added contract language options and codegen verification harness (P2) -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Added WIT component worlds and Java -> Kafka -> Python -> Rust event round-trip verification (P2) -->
 
 # Vigil — API Design
 
@@ -917,3 +918,4 @@ Structured-mode example (debugging tap only):
 | 2026-11-03 | P2 | Kone Tshivhinda (Qoder) | Added §A.12 common contract types and the Buf v2 workspace (`proto/buf.yaml`) with `ResourceId`, `Classification`, `MarkingSet`, `Purpose`, `PolicyContext`, `PageRequest`/`PageInfo`, `VigilError` and `Watermark`. Deprecated: none |
 | 2026-11-03 | P2 | Kone Tshivhinda (Qoder) | Added the CloudEvents 1.0 envelope (`vigil.events.v1.EventEnvelope` in `proto/vigil/events/v1/envelope.proto`) and the AsyncAPI 3.1 catalogue (`docs/asyncapi/vigil-events.yaml`) covering all 11 Part C events, with channel and header conventions in `docs/asyncapi/README.md`. Deprecated: none |
 | 2026-11-04 | P2 | Kone Tshivhinda (Gemini 4 Argon) | Added `go_package` (`github.com/konethegreat/Vigil/gen/go/vigil/<domain>/v1;<domain>v1`) and `java_package` (`africa.vigil.contracts.<domain>.v1`, `java_multiple_files = true`) options across `vigil.common.v1` and `vigil.events.v1`, `proto/buf.gen.yaml` with pinned remote plugins for all six contract languages, and the `sdks/_codegen/` verification harness (`verify.sh`, keeping `sdks/_codegen/gen/` untracked so contract builds verify cleanly without multi-thousand-line generated diffs). Deprecated: none |
+| 2026-11-04 | P2 | Kone Tshivhinda (Gemini 4 Argon) | Added WebAssembly Component Model WIT worlds `proto/wit/common/policy.wit` (`vigil:policy@1.0.0`, pure `evaluate` interface with no ambient imports) and `proto/wit/common/udf.wit` (`vigil:udf@1.0.0`, `execute-batch` with structured `host.log` only), and wired the P2 `Java -> Kafka -> Python -> Rust` `EventEnvelope` wire round-trip check in `sdks/_codegen/verify.sh`. Deprecated: none |

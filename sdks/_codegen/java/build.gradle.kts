@@ -1,4 +1,5 @@
 // Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Compile generated Java and Kotlin contract stubs (P2 task 2.5)
+// Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add emitSampleEvent task for P2 Java -> Kafka -> Python -> Rust round-trip
 plugins {
     java
     kotlin("jvm") version "2.3.20"
@@ -31,4 +32,11 @@ dependencies {
 
 dependencyLocking {
     lockAllConfigurations()
+}
+
+tasks.register<JavaExec>("emitSampleEvent") {
+    group = "verification"
+    description = "Emit a Base64-encoded sample EventEnvelope to stdout for cross-language round-trip verification."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("africa.vigil.contracts.codegen.RoundTripMain")
 }
