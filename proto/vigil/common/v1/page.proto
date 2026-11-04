@@ -1,7 +1,12 @@
 // Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common pagination types (P2 task 2.2)
+// Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add Go and Java package options for polyglot codegen (P2 task 2.1)
 syntax = "proto3";
 
 package vigil.common.v1;
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.common.v1";
 
 // PageRequest is the common pagination input for list calls (API_DESIGN §A.4).
 //

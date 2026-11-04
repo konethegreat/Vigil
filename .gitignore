@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Claude Opus 5.5) on 2026-09-25 — Repository ignore rules for the polyglot monorepo; lockfiles are never ignored (P0)
+# Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Ignore generated contract verification outputs in sdks/_codegen/gen/ (P2 task 2.1)
 #
 # Lockfiles are COMMITTED on purpose (INSTRUCTIONS §6 rule 5; AI_COMMUNICATION MSG-005):
 #   Cargo.lock · go.sum · go.work.sum · pnpm-lock.yaml · uv.lock · gradle.lockfile · mix.lock ·
@@ -146,3 +147,7 @@ $RECYCLE.BIN/
 *.log
 tmp/
 .tmp/
+
+# ── Generated contract stubs (P2 verification harness) ────────────────────────
+sdks/_codegen/gen/
+sdks/_codegen/typescript/src/gen/
