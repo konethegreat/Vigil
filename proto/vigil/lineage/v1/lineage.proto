@@ -1,0 +1,202 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Lineage graph, marking propagation, and decision-lineage contracts (P4 task 4.6, VIGIL_DOMAIN_BLUEPRINT section 10)
+syntax = "proto3";
+
+package vigil.lineage.v1;
+
+import "google/protobuf/timestamp.proto";
+import "vigil/common/v1/rid.proto";
+import "vigil/common/v1/security.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/lineage/v1;lineagev1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.lineage.v1";
+
+// LineageNodeKind classifies a node in the enforced lineage DAG (P4 task 4.6).
+enum LineageNodeKind {
+  // Unspecified node kind.
+  LINEAGE_NODE_KIND_UNSPECIFIED = 0;
+  // Iceberg dataset or dataset snapshot.
+  LINEAGE_NODE_KIND_DATASET = 1;
+  // Forge transform or connector run.
+  LINEAGE_NODE_KIND_TRANSFORM = 2;
+  // Ontology object type or object instance.
+  LINEAGE_NODE_KIND_OBJECT_TYPE = 3;
+  // Action run that mutated ontology state.
+  LINEAGE_NODE_KIND_ACTION_RUN = 4;
+  // Content-addressed source document (doc:<sha256>).
+  LINEAGE_NODE_KIND_DOCUMENT = 5;
+}
+
+// LineageNode represents a vertex in the enforced lineage graph (datasets -> transforms -> objects -> Actions).
+message LineageNode {
+  // Canonical resource identifier of the node.
+  vigil.common.v1.ResourceId rid = 1;
+  // Node kind in the lineage DAG.
+  LineageNodeKind kind = 2;
+  // Branch key (for example main).
+  string branch = 3;
+  // Snapshot ID, schema version, or edit sequence watermark.
+  string version_or_snapshot = 4;
+  // Conjunctive markings carried by this node.
+  vigil.common.v1.MarkingSet markings = 5;
+  // Classification level carried by this node.
+  vigil.common.v1.Classification classification = 6;
+  // Releasability principals carried by this node.
+  repeated string releasability = 7;
+  // Purpose tags carried by this node.
+  repeated vigil.common.v1.Purpose purpose_tags = 8;
+  // Timestamp when the node state was recorded.
+  google.protobuf.Timestamp recorded_at = 9;
+}
+
+// LineageEdge represents a directed dependency from an upstream input node to a downstream target node.
+message LineageEdge {
+  // Upstream source resource identifier.
+  vigil.common.v1.ResourceId from_rid = 1;
+  // Downstream derived resource identifier.
+  vigil.common.v1.ResourceId to_rid = 2;
+  // OpenLineage run ID, transform ID, or action_run_id that produced the edge.
+  string transform_or_run_id = 3;
+  // Markings propagated along this edge under Warden W5.
+  vigil.common.v1.MarkingSet propagated_markings = 4;
+  // Classification propagated along this edge under Warden W5.
+  vigil.common.v1.Classification propagated_classification = 5;
+  // Timestamp when the edge was recorded.
+  google.protobuf.Timestamp recorded_at = 6;
+}
+
+// MarkingPropagationRecord captures an auditable Warden W5 label propagation step (P4 tasks 4.3, 4.6).
+message MarkingPropagationRecord {
+  // Unique propagation record identifier.
+  string propagation_id = 1;
+  // Target derived resource identifier.
+  vigil.common.v1.ResourceId target_rid = 2;
+  // Upstream input resource identifiers whose labels were combined.
+  repeated vigil.common.v1.ResourceId input_rids = 3;
+  // Resulting conjunctive markings (union of input markings).
+  vigil.common.v1.MarkingSet propagated_markings = 4;
+  // Resulting classification (maximum of input classifications).
+  vigil.common.v1.Classification propagated_classification = 5;
+  // Resulting releasability (intersection of non-empty input releasabilities).
+  repeated string propagated_releasability = 6;
+  // Resulting purpose tags (intersection of input purpose tags).
+  repeated vigil.common.v1.Purpose propagated_purpose_tags = 7;
+  // Warden policy version hash that computed the propagation.
+  string policy_version = 8;
+  // Timestamp when propagation was evaluated.
+  google.protobuf.Timestamp evaluated_at = 9;
+}
+
+// DecisionEvidence captures the inputs read at decision time (VIGIL_DOMAIN_BLUEPRINT section 10).
+message DecisionEvidence {
+  // Object RIDs and versions read before the action was submitted.
+  repeated string object_rids_read = 1;
+  // Upstream dataset transaction RIDs backing those objects.
+  repeated vigil.common.v1.ResourceId dataset_transaction_rids = 2;
+  // Index watermark at the time of the decision.
+  string index_watermark = 3;
+  // Content-addressed source document SHA-256 digests cited.
+  repeated string source_document_sha256s = 4;
+  // Risk-indicator explanation reference cited, if any.
+  string risk_explanation_ref = 5;
+}
+
+// DecisionLineageRecord projects the complete explainability chain for an outcome (VIGIL_DOMAIN_BLUEPRINT section 10).
+message DecisionLineageRecord {
+  // Action run identifier (every edit has an action_run_id).
+  string action_run_id = 1;
+  // Action type and version (for example refer-supplier@1).
+  string action_type = 2;
+  // Human or service principal who submitted the action.
+  string actor_principal = 3;
+  // Declared statutory or operational purpose.
+  vigil.common.v1.Purpose purpose = 4;
+  // Case compartment identifier when applicable.
+  string case_id = 5;
+  // Bound justification identifier.
+  string justification_id = 6;
+  // Two-person or supervisor approval request identifier when applicable.
+  string approval_request_id = 7;
+  // Agent session identifier when the run was staged by an AI agent (P15).
+  string agent_session_id = 8;
+  // Model identifier and version when staged by an AI agent.
+  string model_id = 9;
+  // Canonical JSON diff between what the AI agent proposed and what the human applied.
+  string parameter_diff_json = 10;
+  // Evidence read at decision time (objects, dataset transactions, documents).
+  DecisionEvidence evidence = 11;
+  // Warden policy version hash active when the decision was evaluated.
+  string warden_policy_version = 12;
+  // Chained W12 audit event hash anchoring the decision.
+  string audit_event_hash = 13;
+  // Inclusive start of the edit_log sequence range produced by the action.
+  int64 edit_seq_start = 14;
+  // Inclusive end of the edit_log sequence range produced by the action.
+  int64 edit_seq_end = 15;
+  // Timestamp when the decision lineage record was captured.
+  google.protobuf.Timestamp recorded_at = 16;
+}
+
+// RecordLineageEdgeRequest registers upstream-to-downstream lineage and W5 label propagation.
+message RecordLineageEdgeRequest {
+  // Upstream input nodes.
+  repeated LineageNode inputs = 1;
+  // Downstream target node.
+  LineageNode target = 2;
+  // Transform, connector run, or action_run_id that produced the target.
+  string transform_or_run_id = 3;
+  // Warden policy version hash.
+  string policy_version = 4;
+}
+
+// RecordLineageEdgeResponse returns the recorded edges and W5 propagation record.
+message RecordLineageEdgeResponse {
+  // Directed edges added to the lineage graph.
+  repeated LineageEdge edges = 1;
+  // Auditable W5 marking propagation record.
+  MarkingPropagationRecord propagation = 2;
+}
+
+// GetUpstreamLineageRequest queries the upstream lineage DAG for a resource RID.
+message GetUpstreamLineageRequest {
+  // Target resource RID to trace upstream.
+  vigil.common.v1.ResourceId target_rid = 1;
+  // Maximum traversal depth (defaults to 10).
+  int32 max_depth = 2;
+}
+
+// GetUpstreamLineageResponse returns the upstream nodes, edges, and propagation records.
+message GetUpstreamLineageResponse {
+  // Upstream lineage nodes discovered.
+  repeated LineageNode nodes = 1;
+  // Directed edges connecting the upstream nodes to the target.
+  repeated LineageEdge edges = 2;
+  // Marking propagation records along the upstream chain.
+  repeated MarkingPropagationRecord propagations = 3;
+}
+
+// ExplainDecisionRequest queries the end-to-end decision lineage chain for an action run (VIGIL_DOMAIN_BLUEPRINT section 10).
+message ExplainDecisionRequest {
+  // Action run identifier to explain.
+  string action_run_id = 1;
+}
+
+// ExplainDecisionResponse returns the decision lineage record and its upstream dataset and document nodes.
+message ExplainDecisionResponse {
+  // Projected decision lineage record.
+  DecisionLineageRecord decision = 1;
+  // Upstream lineage nodes (objects -> transforms -> dataset transactions -> documents).
+  repeated LineageNode upstream_nodes = 2;
+  // Upstream lineage edges.
+  repeated LineageEdge upstream_edges = 3;
+}
+
+// LineageService manages the enforced lineage graph, marking-propagation records, and decision-lineage queries (P4 task 4.6).
+service LineageService {
+  // Records a lineage transition and verifies Warden W5 marking propagation.
+  rpc RecordLineageEdge(RecordLineageEdgeRequest) returns (RecordLineageEdgeResponse);
+  // Returns the upstream lineage DAG and propagation records for a resource.
+  rpc GetUpstreamLineage(GetUpstreamLineageRequest) returns (GetUpstreamLineageResponse);
+  // Explains an action outcome by walking from edit_log and action_run to datasets and source documents.
+  rpc ExplainDecision(ExplainDecisionRequest) returns (ExplainDecisionResponse);
+}

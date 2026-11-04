@@ -1,0 +1,50 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Apache Polaris Iceberg REST Catalog Helm values for the Vigil lakehouse (P4 tasks 4.1-4.5)
+# Apache Polaris is Apache-2.0 licensed (ADR-0003) and serves as the pod-local Iceberg v3 catalog.
+
+replicaCount: 2
+
+polaris:
+  image:
+    repository: apache/polaris
+    tag: "0.9.0"
+    pullPolicy: IfNotPresent
+
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "2000m"
+      memory: "1Gi"
+
+  catalog:
+    warehouseLocation: "s3://vigil-za-gp-1-lake/"
+    formatVersion: 3
+    reservedPacks:
+      - "_raw"
+      - "_er"
+      - "_edits"
+      - "_quality"
+    defaultTableProperties:
+      "format-version": "3"
+      "write.delete.mode": "merge-on-read"
+      "history.expire.max-snapshot-age-ms": "2592000000"
+      "history.expire.min-snapshots-to-keep": "10"
+    rawAisRetentionOverrideMs: 1209600000
+    credentialVending:
+      enabled: true
+      ttlSeconds: 900
+      requireWardenPolicyCheck: true
+      neverTrustClientTableProperties: true

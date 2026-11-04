@@ -1,0 +1,383 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Forge Datasets Iceberg v3 transaction, branch, tag, encryption, and POPIA erasure contracts (P4 tasks 4.1-4.5, 4.7)
+syntax = "proto3";
+
+package vigil.forge.datasets.v1;
+
+import "google/protobuf/timestamp.proto";
+import "vigil/common/v1/page.proto";
+import "vigil/common/v1/rid.proto";
+import "vigil/common/v1/security.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/forge/datasets/v1;datasetsv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.forge.datasets.v1";
+
+// TransactionType defines the dataset mutation mode (API_DESIGN section B.5, VIGIL_DOMAIN_BLUEPRINT section 9.1).
+enum TransactionType {
+  // Missing transaction type. Rejected at validation.
+  TRANSACTION_TYPE_UNSPECIFIED = 0;
+  // Replaces the full dataset view on the target branch. At most one OPEN SNAPSHOT per branch.
+  TRANSACTION_TYPE_SNAPSHOT = 1;
+  // Adds rows to the dataset branch.
+  TRANSACTION_TYPE_APPEND = 2;
+  // Upserts rows by primary key.
+  TRANSACTION_TYPE_UPDATE = 3;
+  // Removes rows by primary key using Iceberg v3 deletion vectors.
+  TRANSACTION_TYPE_DELETE = 4;
+}
+
+// TransactionStatus tracks the lifecycle of a dataset transaction (API_DESIGN section B.5).
+enum TransactionStatus {
+  // Unspecified status.
+  TRANSACTION_STATUS_UNSPECIFIED = 0;
+  // Transaction is open and accepts staged file uploads.
+  TRANSACTION_STATUS_OPEN = 1;
+  // Transaction passed quality gates, propagated labels, and committed an Iceberg snapshot.
+  TRANSACTION_STATUS_COMMITTED = 2;
+  // Transaction was aborted by the caller, expired, or failed a BLOCK quality check.
+  TRANSACTION_STATUS_ABORTED = 3;
+}
+
+// DataOrigin classifies the provenance origin of ingested records (VIGIL_DOMAIN_BLUEPRINT section 9.5).
+enum DataOrigin {
+  // Missing data origin. Rejected at validation.
+  DATA_ORIGIN_UNSPECIFIED = 0;
+  // Real operational or public-record data.
+  DATA_ORIGIN_REAL = 1;
+  // Keyed HMAC-SHA-256 pseudonymised data (psn_/idf_).
+  DATA_ORIGIN_PSEUDONYMISED = 2;
+  // Synthetic demonstration or test data.
+  DATA_ORIGIN_SYNTHETIC = 3;
+}
+
+// SourceRun identifies the connector or transform execution that produced the transaction (API_DESIGN DS-01).
+message SourceRun {
+  // Connector or transform registry identifier (for example ocds-etenders).
+  string connector_id = 1;
+  // Semantic version of the connector or transform.
+  string connector_version = 2;
+  // UUIDv7 execution run identifier.
+  string run_id = 3;
+  // Inclusive lower cursor watermark bound.
+  string cursor_from = 4;
+  // Exclusive upper cursor watermark bound.
+  string cursor_to = 5;
+}
+
+// RecordProvenance carries mandatory legal and custody metadata for ingested records (VIGIL_DOMAIN_BLUEPRINT section 9.5).
+message RecordProvenance {
+  // Terms-register reference and version (for example terms/ocds-etenders@1).
+  string terms_ref = 1;
+  // Lawful-basis reference and version (for example lb/ocds-etenders@1).
+  string lawful_basis_ref = 2;
+  // Originating responsible party code (for example NT_OCPO).
+  string responsible_party = 3;
+  // Record origin classification.
+  DataOrigin data_origin = 4;
+}
+
+// ScopedUploadCredentials carries 15-minute staging S3 credentials vended after Warden evaluation (API_DESIGN DS-01).
+message ScopedUploadCredentials {
+  // Temporary access key identifier.
+  string access_key_id = 1;
+  // Temporary secret access key (never logged).
+  string secret_access_key = 2;
+  // Signed STS session token bound to the staging prefix.
+  string session_token = 3;
+  // Expiration timestamp (maximum 15 minutes from issuance).
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// StagedUploadTarget describes the SeaweedFS / S3 staging location for an open transaction (API_DESIGN DS-01).
+message StagedUploadTarget {
+  // Storage protocol (S3).
+  string protocol = 1;
+  // Pod-local S3 endpoint URL.
+  string endpoint = 2;
+  // Lakehouse bucket name (for example vigil-za-gp-1-lake).
+  string bucket = 3;
+  // Transaction-scoped staging prefix (for example demo/_staging/<txn-id>/).
+  string prefix = 4;
+  // Temporary prefix-scoped upload credentials.
+  ScopedUploadCredentials credentials = 5;
+}
+
+// StagedFile describes a Parquet or Iceberg data file uploaded to the staging prefix (API_DESIGN DS-02).
+message StagedFile {
+  // Relative or staging path of the uploaded Parquet file.
+  string path = 1;
+  // Lowercase hex SHA-256 digest of the file bytes.
+  string sha256 = 2;
+  // Number of rows contained in the file.
+  int64 row_count = 3;
+}
+
+// RowCounts summarises rows added and deleted by a committed transaction (API_DESIGN DS-02).
+message RowCounts {
+  // Number of rows added or upserted.
+  int64 added = 1;
+  // Number of rows deleted via deletion vectors.
+  int64 deleted = 2;
+}
+
+// PropagatedLabel carries the Warden W5 propagated security label stored in Iceberg table properties (DATA_MODEL section 9).
+message PropagatedLabel {
+  // Conjunctive marking identifiers (stored in vigil.markings).
+  vigil.common.v1.MarkingSet markings = 1;
+  // Hierarchical classification level (stored in vigil.classification).
+  vigil.common.v1.Classification classification = 2;
+  // Disjunctive releasability principals (stored in vigil.releasability).
+  repeated string releasability = 3;
+  // Allowed purpose tags (stored in vigil.purpose_tags).
+  repeated vigil.common.v1.Purpose purpose_tags = 4;
+}
+
+// DatasetBranch represents a named branch reference on an Iceberg dataset (API_DESIGN DS-04, DATA_MODEL section 9).
+message DatasetBranch {
+  // Branch name (for example main, vb-integrity-v2, vs-scenario-1, wap-run-01).
+  string name = 1;
+  // Head transaction RID on this branch.
+  vigil.common.v1.ResourceId head_transaction_rid = 2;
+  // Head Iceberg v3 snapshot identifier.
+  string head_snapshot_id = 3;
+  // True when this branch is the default branch (main).
+  bool is_default = 4;
+  // Timestamp when the branch was created.
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// DatasetTag represents an immutable named tag pointing to an Iceberg snapshot (DATA_MODEL section 9).
+message DatasetTag {
+  // Tag name (for example release-20261104-1, er-run-01, erasure-req-post).
+  string name = 1;
+  // Target Iceberg snapshot identifier.
+  string snapshot_id = 2;
+  // Timestamp when the tag was created.
+  google.protobuf.Timestamp created_at = 3;
+}
+
+// ErasureAuditProof records the hash-chained, value-free proof of a POPIA dataset erasure (DATA_MODEL section 6.3).
+message ErasureAuditProof {
+  // Approved erase-data-subject action run / request identifier.
+  string erasure_request_id = 1;
+  // Dataset resource identifier.
+  vigil.common.v1.ResourceId dataset_rid = 2;
+  // Pre-erasure head snapshot identifier before deletion vectors and snapshot expiry.
+  string pre_erasure_snapshot_id = 3;
+  // SHA-256 digests of the rewritten/expired manifests (counts and hashes only, never values).
+  repeated string rewritten_manifest_sha256s = 4;
+  // Post-erasure snapshot identifier carrying the deletion vector and compacted files.
+  string post_erasure_snapshot_id = 5;
+  // Retained post-erasure tag name (erasure-<request-id>-post).
+  string post_erasure_tag = 6;
+  // Number of rows removed across the dataset.
+  int64 erased_row_count = 7;
+  // Snapshot identifiers explicitly expired during the erasure saga.
+  repeated string expired_snapshot_ids = 8;
+  // Chained W12 audit event hash anchoring the erasure proof.
+  string audit_event_hash = 9;
+  // Timestamp when the erasure completed.
+  google.protobuf.Timestamp completed_at = 10;
+}
+
+// DatasetTransactionCommittedEvent is the payload of vigil.forge.dataset.transaction.committed.v1 (P4 task 4.4).
+message DatasetTransactionCommittedEvent {
+  // Dataset resource identifier.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Committed transaction resource identifier.
+  vigil.common.v1.ResourceId transaction_rid = 2;
+  // Target branch name.
+  string branch = 3;
+  // Transaction mutation type.
+  TransactionType type = 4;
+  // Resulting Iceberg v3 snapshot identifier.
+  string snapshot_id = 5;
+  // Row addition and deletion counts.
+  RowCounts rows = 6;
+  // Warden W5 propagated security label applied to the dataset snapshot.
+  PropagatedLabel label = 7;
+  // OpenLineage run identifier emitted for this commit.
+  string lineage_run_id = 8;
+  // Schema version active at commit time.
+  int32 schema_version = 9;
+  // Commit timestamp.
+  google.protobuf.Timestamp committed_at = 10;
+}
+
+// OpenTransactionRequest opens a new dataset transaction on a branch (API_DESIGN DS-01).
+message OpenTransactionRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Target branch name (defaults to main).
+  string branch = 2;
+  // Mutation type (SNAPSHOT, APPEND, UPDATE, DELETE).
+  TransactionType type = 3;
+  // Connector or transform source run metadata.
+  SourceRun source_run = 4;
+  // Upstream input dataset or resource RIDs feeding Warden propagate().
+  repeated vigil.common.v1.ResourceId declared_inputs = 5;
+  // Mandatory legal and source provenance.
+  RecordProvenance provenance = 6;
+  // Idempotency key: SHA-256(connector_id || cursor_from || cursor_to).
+  string idempotency_key = 7;
+  // Caller policy context for Warden evaluation.
+  vigil.common.v1.PolicyContext policy_context = 8;
+}
+
+// OpenTransactionResponse returns the opened transaction and 15-minute staged upload target (API_DESIGN DS-01).
+message OpenTransactionResponse {
+  // Assigned transaction RID.
+  vigil.common.v1.ResourceId transaction_rid = 1;
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 2;
+  // Branch name.
+  string branch = 3;
+  // Transaction type.
+  TransactionType type = 4;
+  // Current status (OPEN).
+  TransactionStatus status = 5;
+  // Timestamp when the transaction opened.
+  google.protobuf.Timestamp opened_at = 6;
+  // Timestamp when the open transaction expires if uncommitted.
+  google.protobuf.Timestamp expires_at = 7;
+  // Scoped S3 upload staging target and 15-minute credentials.
+  StagedUploadTarget upload = 8;
+}
+
+// CommitTransactionRequest verifies file hashes, runs BLOCK quality gates, propagates markings, and commits (API_DESIGN DS-02).
+message CommitTransactionRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Transaction RID to commit.
+  vigil.common.v1.ResourceId transaction_rid = 2;
+  // Staged Parquet files to include in the commit.
+  repeated StagedFile files = 3;
+  // Dataset schema version for the committed files.
+  int32 schema_version = 4;
+  // Data-quality contract reference (for example dq/ocds-releases@3).
+  string quality_contract = 5;
+  // Idempotency key for safe commit replay.
+  string idempotency_key = 6;
+}
+
+// CommitTransactionResponse returns the committed Iceberg snapshot, propagated label, and OpenLineage run ID (API_DESIGN DS-02).
+message CommitTransactionResponse {
+  // Committed transaction RID.
+  vigil.common.v1.ResourceId transaction_rid = 1;
+  // Transaction status (COMMITTED).
+  TransactionStatus status = 2;
+  // Iceberg v3 snapshot identifier.
+  string snapshot_id = 3;
+  // Timestamp when the commit succeeded.
+  google.protobuf.Timestamp committed_at = 4;
+  // Rows added and deleted.
+  RowCounts rows = 5;
+  // Propagated security label written to Iceberg table properties.
+  PropagatedLabel label = 6;
+  // Emitted OpenLineage run identifier.
+  string lineage_run_id = 7;
+}
+
+// AbortTransactionRequest aborts an open transaction (API_DESIGN DS-03).
+message AbortTransactionRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Transaction RID to abort.
+  vigil.common.v1.ResourceId transaction_rid = 2;
+  // Human- or system-readable reason for aborting.
+  string reason = 3;
+}
+
+// AbortTransactionResponse confirms the transaction is ABORTED (API_DESIGN DS-03).
+message AbortTransactionResponse {
+  // Aborted transaction RID.
+  vigil.common.v1.ResourceId transaction_rid = 1;
+  // Transaction status (ABORTED).
+  TransactionStatus status = 2;
+}
+
+// ListBranchesRequest lists branches on a dataset (API_DESIGN DS-04).
+message ListBranchesRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Cursor pagination parameters.
+  vigil.common.v1.PageRequest page = 2;
+}
+
+// ListBranchesResponse returns the branches on a dataset (API_DESIGN DS-04).
+message ListBranchesResponse {
+  // Branches ordered with the default branch first.
+  repeated DatasetBranch data = 1;
+  // Pagination metadata.
+  vigil.common.v1.PageInfo page_info = 2;
+}
+
+// CreateBranchRequest creates a new branch pointing at a source branch head or snapshot (P4 task 4.2).
+message CreateBranchRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // New branch name (for example wap-run-01 or vb-integrity-v2).
+  string branch_name = 2;
+  // Source branch name to branch from (defaults to main).
+  string from_branch = 3;
+}
+
+// CreateBranchResponse returns the newly created dataset branch.
+message CreateBranchResponse {
+  // Created branch metadata.
+  DatasetBranch branch = 1;
+}
+
+// MergeBranchRequest merges a source branch into a target branch with Warden label propagation (P4 task 4.2).
+message MergeBranchRequest {
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 1;
+  // Source branch name (for example wap-run-01).
+  string source_branch = 2;
+  // Target branch name (for example main).
+  string target_branch = 3;
+}
+
+// MergeBranchResponse returns the updated target branch and propagated security label.
+message MergeBranchResponse {
+  // Updated target branch after merge.
+  DatasetBranch target_branch = 1;
+  // Propagated security label on the merged snapshot.
+  PropagatedLabel label = 2;
+}
+
+// EraseDatasetSubjectRequest executes a POPIA erasure across snapshots on a dataset (DATA_MODEL section 6.3, P4 task 4.5).
+message EraseDatasetSubjectRequest {
+  // Approved erase-data-subject request identifier.
+  string erasure_request_id = 1;
+  // Target dataset RID.
+  vigil.common.v1.ResourceId dataset_rid = 2;
+  // Primary keys or subject pseudonyms to erase via Iceberg v3 deletion vectors.
+  repeated string subject_primary_keys = 3;
+  // True when two-person LEGAL_EFFECT approval has been verified.
+  bool two_person_approval_verified = 4;
+}
+
+// EraseDatasetSubjectResponse returns the cryptographic erasure audit proof.
+message EraseDatasetSubjectResponse {
+  // Hash-chained erasure proof with expired snapshot IDs and post-erasure tag.
+  ErasureAuditProof proof = 1;
+}
+
+// DatasetService manages Iceberg v3 datasets, transactions, branches, tags, and POPIA erasure (API_DESIGN section B.5).
+service DatasetService {
+  // Opens a SNAPSHOT, APPEND, UPDATE, or DELETE transaction and vends 15-minute scoped staging credentials (DS-01).
+  rpc OpenTransaction(OpenTransactionRequest) returns (OpenTransactionResponse);
+  // Verifies hashes, runs BLOCK quality checks, propagates Warden markings, and commits the Iceberg snapshot (DS-02).
+  rpc CommitTransaction(CommitTransactionRequest) returns (CommitTransactionResponse);
+  // Aborts an open transaction and discards staged files (DS-03).
+  rpc AbortTransaction(AbortTransactionRequest) returns (AbortTransactionResponse);
+  // Lists branches on a dataset (DS-04).
+  rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse);
+  // Creates a dataset branch from an existing branch head (P4 task 4.2).
+  rpc CreateBranch(CreateBranchRequest) returns (CreateBranchResponse);
+  // Merges a branch into a target branch with inherited markings (P4 task 4.2).
+  rpc MergeBranch(MergeBranchRequest) returns (MergeBranchResponse);
+  // Removes subject rows across snapshots with v3 deletion vectors, snapshot expiry, and an audited proof (P4 task 4.5).
+  rpc EraseDatasetSubject(EraseDatasetSubjectRequest) returns (EraseDatasetSubjectResponse);
+}
