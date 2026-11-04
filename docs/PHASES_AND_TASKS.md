@@ -5,6 +5,7 @@
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Record the connected operations integration -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Recorded the P2 common-types slice and P1 residual blockers -->
 <!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P2 after WIT worlds and Kafka round-trip merge; claim P3 Warden Security Kernel -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P3 Warden Security Kernel after bindings and PG18 security suite merge; claim P4 Forge Datasets & Lakehouse -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -154,7 +155,7 @@
 ---
 
 ## P3: Warden Security Kernel
-**Status**: 🚀 In Progress - Kone Tshivhinda (Gemini 4 Argon) | Started: 2026-11-04
+**Status**: ✅ Complete - Kone Tshivhinda (Gemini 4 Argon) | Completed: 2026-11-04 (PR #84 `c251f94`, PR #86 `c4c0e05`, PR #88 `3d7f4e6`)
 **Depends On**: P2
 **Blocks**: P4–P43
 **Complexity**: Very High
@@ -184,7 +185,7 @@
 ---
 
 ## P4: Forge Datasets & Lakehouse
-**Status**: ⬜ Not Started
+**Status**: 🚀 In Progress - Kone Tshivhinda (Gemini 4 Argon) | Started: 2026-11-04
 **Depends On**: P3
 **Blocks**: P6, P11, P12, P22–P26
 **Complexity**: High
