@@ -1,0 +1,270 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden PolicyService, label propagation, and W1-W12 decision contracts (P3 tasks 3.1, 3.2, 3.5)
+syntax = "proto3";
+
+package vigil.warden.v1;
+
+import "google/protobuf/timestamp.proto";
+import "vigil/common/v1/rid.proto";
+import "vigil/common/v1/security.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/warden/v1;wardenv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.warden.v1";
+
+// Operation names the action being evaluated by Warden (API_DESIGN section B.6).
+enum Operation {
+  // Missing operation. Fails closed under W11.
+  OPERATION_UNSPECIFIED = 0;
+  // W1/W2/W3 read access to a row, property, or link.
+  OPERATION_READ = 1;
+  // W4 write or update on a resource.
+  OPERATION_WRITE = 2;
+  // W7/W12 export or evidence-pack bundling.
+  OPERATION_EXPORT = 3;
+  // W10 placement of resource content into a model endpoint context.
+  OPERATION_AI_CONTEXT = 4;
+  // W8 dual-control declassification ("Expand Access").
+  OPERATION_DECLASSIFY = 5;
+}
+
+// Checkpoint identifies a W7 justification checkpoint class (VIGIL_DOMAIN_BLUEPRINT section 4.3).
+enum Checkpoint {
+  // Missing checkpoint.
+  CHECKPOINT_UNSPECIFIED = 0;
+  // First access to SPECIAL-PI, CRIMINAL-CONDUCT, or CHILD data.
+  CHECKPOINT_SPECIAL_CATEGORY_ACCESS = 1;
+  // Person-level cross-source linkage.
+  CHECKPOINT_PERSON_LINKAGE = 2;
+  // Exporting records or evidence bundles.
+  CHECKPOINT_EXPORT = 3;
+  // W8 declassification request or approval.
+  CHECKPOINT_DECLASSIFICATION = 4;
+  // Revealing cipher_text values in clear.
+  CHECKPOINT_REVEAL = 5;
+}
+
+// RedactionReason explains why a property or foreign key was redacted (W2, W3, W6).
+enum RedactionReason {
+  // Unspecified redaction reason.
+  REDACTION_REASON_UNSPECIFIED = 0;
+  // Caller is missing one or more column markings.
+  REDACTION_REASON_MARKING = 1;
+  // Caller clearance is below column classification.
+  REDACTION_REASON_CLASSIFICATION = 2;
+  // Caller releasability does not intersect column releasability.
+  REDACTION_REASON_RELEASABILITY = 3;
+  // Declared purpose is not in column purpose tags.
+  REDACTION_REASON_PURPOSE = 4;
+  // W6 bystander protection or case compartment restriction.
+  REDACTION_REASON_CASE = 5;
+  // W3 foreign key target is invisible to the caller.
+  REDACTION_REASON_LINK_TARGET = 6;
+}
+
+// ObligationKind enumerates mandatory enforcement obligations (VIGIL_DOMAIN_BLUEPRINT section 4.7).
+enum ObligationKind {
+  // Unspecified obligation.
+  OBLIGATION_KIND_UNSPECIFIED = 0;
+  // W12 emit a hash-chained read audit event with row count and marking IDs.
+  OBLIGATION_KIND_AUDIT_READ = 1;
+  // W10 never place the content in a model context.
+  OBLIGATION_KIND_NO_AI = 2;
+  // Exclude content from exports and evidence packs.
+  OBLIGATION_KIND_NO_EXPORT = 3;
+  // Suppress aggregate cells below k in exports (default k = 10).
+  OBLIGATION_KIND_SUPPRESS_SMALL_CELLS = 4;
+  // Carry the source attribution reference on exports.
+  OBLIGATION_KIND_ATTRIBUTE = 5;
+  // W7 refuse until a valid justification for the named checkpoint is bound.
+  OBLIGATION_KIND_REQUIRE_JUSTIFICATION = 6;
+}
+
+// SecurityLabel is the four-part resource label lambda(R) = <M, C, REL, P> (section 4.1).
+message SecurityLabel {
+  // Conjunctive markings M: reader must hold all of them.
+  vigil.common.v1.MarkingSet markings = 1;
+  // Hierarchical classification C on the canonical ladder.
+  vigil.common.v1.Classification classification = 2;
+  // Disjunctive releasability principals REL (empty means unrestricted top).
+  repeated string releasability = 3;
+  // Allowed purpose codes P (empty means unrestricted top).
+  repeated vigil.common.v1.Purpose purpose_tags = 4;
+}
+
+// PropertyDescriptor describes a single column or property on a resource for W2 evaluation.
+message PropertyDescriptor {
+  // Property API name.
+  string property_name = 1;
+  // Column-level security label.
+  SecurityLabel label = 2;
+  // True when stored as cipher_text (eligible for W2/section 4.6 masked display).
+  bool is_cipher_text = 3;
+  // True when this property is a foreign key whose target failed W3 visibility.
+  bool invisible_link_target = 4;
+}
+
+// ResourceDescriptor carries the security metadata of a target resource R.
+message ResourceDescriptor {
+  // Resource identifier.
+  vigil.common.v1.ResourceId rid = 1;
+  // Row or resource security label lambda(R).
+  SecurityLabel label = 2;
+  // Column/property descriptors evaluated under W2 and W3.
+  repeated PropertyDescriptor properties = 3;
+  // Case identifier when the resource belongs to a case compartment (W6).
+  string case_id = 4;
+  // CaseParty role when the resource represents a party in a case (for example BYSTANDER).
+  string case_party_role = 5;
+  // Statutory or operational gates required by the resource (for example S57_1A_LINKAGE).
+  repeated string required_gates = 6;
+  // Source attribution terms reference when attribution is required on export.
+  string attribution_terms_ref = 7;
+}
+
+// DenyReason records the formal rule and component that denied access.
+message DenyReason {
+  // Formal rule identifier (W1 through W12).
+  string rule = 1;
+  // Component name (for example MARKING, CLASSIFICATION, RELEASABILITY, PURPOSE, CASE, GATE).
+  string component = 2;
+  // Human-readable diagnostic forwarden-admin/security-auditor debugging.
+  string detail = 3;
+}
+
+// PropertyRedaction instructs the enforcement point to redact or mask a property.
+message PropertyRedaction {
+  // Property API name.
+  string property_name = 1;
+  // Reason code for the redaction.
+  RedactionReason reason = 2;
+  // When true, return the masked display (for example ******4521) instead of full redaction.
+  bool masked = 3;
+}
+
+// Obligation represents a mandatory post-decision enforcement obligation.
+message Obligation {
+  // Obligation kind.
+  ObligationKind kind = 1;
+  // Checkpoint name or attribution terms reference when applicable.
+  string parameter = 2;
+  // Minimum cell count k for OBLIGATION_KIND_SUPPRESS_SMALL_CELLS (default 10).
+  int32 min_cell_size = 3;
+}
+
+// EvaluateRequest is the request payload for PolicyService.Evaluate (POL-01).
+message EvaluateRequest {
+  // Verified caller policy context sigma.
+  vigil.common.v1.PolicyContext context = 1;
+  // Operation being attempted.
+  Operation operation = 2;
+  // Target resource descriptor.
+  ResourceDescriptor resource = 3;
+  // Proposed new label when operation is OPERATION_WRITE or OPERATION_DECLASSIFY.
+  SecurityLabel proposed_label = 4;
+  // Active statutory/operational gates enabled for the tenant.
+  repeated string active_gates = 5;
+  // Whether the OpenFGA discretionary role check succeeded.
+  bool discretionary_allowed = 6;
+  // Cleared label of the target AI model endpoint when operation is OPERATION_AI_CONTEXT (W10).
+  SecurityLabel model_endpoint_label = 7;
+}
+
+// EvaluateResponse is the decision returned by PolicyService.Evaluate (POL-01).
+message EvaluateResponse {
+  // True when the operation is permitted.
+  bool allow = 1;
+  // Deny reasons when allow is false.
+  repeated DenyReason reasons = 2;
+  // Property-level redactions and masks to apply when allow is true (W2, W3, W6).
+  repeated PropertyRedaction redactions = 3;
+  // Mandatory obligations that the enforcement point must honour (section 4.7).
+  repeated Obligation obligations = 4;
+  // Policy engine version string.
+  string policy_version = 5;
+  // Timestamp at which evaluation occurred.
+  google.protobuf.Timestamp evaluated_at = 6;
+}
+
+// PropagateRequest computes the derived label for D = f(I_1 ... I_n) under rule W5.
+message PropagateRequest {
+  // Input resource security labels.
+  repeated SecurityLabel inputs = 1;
+  // Transform security label lambda_f.
+  SecurityLabel transform_label = 2;
+  // True when an approved POPIA s15(3) purpose-compatibility record reopens an empty purpose intersection.
+  bool purpose_compatibility_approved = 3;
+  // Purpose tags granted by the approved s15(3) compatibility record.
+  repeated vigil.common.v1.Purpose compatible_purposes = 4;
+}
+
+// PropagateResponse returns the W5 derived label or blocks the derivation if REL or P is empty.
+message PropagateResponse {
+  // True when the derivation is lawful; false when blocked by empty REL or P intersection.
+  bool allowed = 1;
+  // Derived security label lambda(D).
+  SecurityLabel derived_label = 2;
+  // Block reasons when allowed is false.
+  repeated DenyReason reasons = 3;
+}
+
+// JustificationScope scopes a W7 justification to specific object types or RIDs.
+message JustificationScope {
+  // Object type API names covered by the justification.
+  repeated string object_types = 1;
+  // Specific resource RIDs covered by the justification.
+  repeated vigil.common.v1.ResourceId rids = 2;
+}
+
+// CreateJustificationRequest captures a W7 checkpoint justification (POL-02).
+message CreateJustificationRequest {
+  // Verified caller policy context.
+  vigil.common.v1.PolicyContext context = 1;
+  // Checkpoint class requiring justification.
+  Checkpoint checkpoint = 2;
+  // Justification text (20 to 2,000 characters; stored encrypted in vigil_sec.justification).
+  string text = 3;
+  // Scope to which the justification applies.
+  JustificationScope scope = 4;
+}
+
+// CreateJustificationResponse returns the bound W7 justification metadata (POL-02).
+message CreateJustificationResponse {
+  // Generated UUIDv7 justification identifier.
+  string justification_id = 1;
+  // Checkpoint class.
+  Checkpoint checkpoint = 2;
+  // Expiration timestamp (at most 8 hours from creation).
+  google.protobuf.Timestamp expires_at = 3;
+  // Principal to whom the justification is bound.
+  string principal = 4;
+  // Declared purpose to which the justification is bound.
+  vigil.common.v1.Purpose purpose = 5;
+  // Case identifier to which the justification is bound, if applicable.
+  string case_id = 6;
+  // SHA-256 hex digest of the justification text for inclusion in the W12 audit event.
+  string text_sha256 = 7;
+}
+
+// GetEffectiveContextRequest requests the caller's effective security attributes (POL-03).
+message GetEffectiveContextRequest {
+  // Verified policy context.
+  vigil.common.v1.PolicyContext context = 1;
+}
+
+// GetEffectiveContextResponse returns the caller's held markings, clearance, releasability, purposes, and roles (POL-03).
+message GetEffectiveContextResponse {
+  // Effective policy context.
+  vigil.common.v1.PolicyContext context = 1;
+}
+
+// PolicyService is the Warden policy evaluation, propagation, and justification contract (P3).
+service PolicyService {
+  // Evaluate runs rules W1 through W12 for a subject, operation, and resource (POL-01).
+  rpc Evaluate(EvaluateRequest) returns (EvaluateResponse);
+  // Propagate computes the derived security label across input resources under rule W5.
+  rpc Propagate(PropagateRequest) returns (PropagateResponse);
+  // CreateJustification records and binds a W7 checkpoint justification (POL-02).
+  rpc CreateJustification(CreateJustificationRequest) returns (CreateJustificationResponse);
+  // GetEffectiveContext returns the caller's effective security context (POL-03).
+  rpc GetEffectiveContext(GetEffectiveContextRequest) returns (GetEffectiveContextResponse);
+}
