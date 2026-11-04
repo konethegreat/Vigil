@@ -5,19 +5,11 @@
 from __future__ import annotations
 
 import ast
-import importlib
 import py_compile
 import sys
 from pathlib import Path
 
-MODULES = (
-    "vigil.common.v1.rid_pb2",
-    "vigil.common.v1.security_pb2",
-    "vigil.common.v1.page_pb2",
-    "vigil.common.v1.error_pb2",
-    "vigil.common.v1.watermark_pb2",
-    "vigil.events.v1.envelope_pb2",
-)
+EXPECTED_COUNT = 6
 
 
 def main() -> int:
@@ -28,9 +20,9 @@ def main() -> int:
 
     py_files = sorted(gen_dir.rglob("*.py"))
     pyi_files = sorted(gen_dir.rglob("*.pyi"))
-    if len(py_files) < len(MODULES) or len(pyi_files) < len(MODULES):
+    if len(py_files) < EXPECTED_COUNT or len(pyi_files) < EXPECTED_COUNT:
         print(
-            f"error: expected at least {len(MODULES)} .py and .pyi files, "
+            f"error: expected at least {EXPECTED_COUNT} .py and .pyi files, "
             f"found {len(py_files)} .py and {len(pyi_files)} .pyi",
             file=sys.stderr,
         )
@@ -52,10 +44,13 @@ def main() -> int:
         return 0
 
     sys.path.insert(0, str(gen_dir))
-    for mod_name in MODULES:
-        importlib.import_module(mod_name)
-
-    from vigil.common.v1 import rid_pb2, security_pb2
+    from vigil.common.v1 import (
+        error_pb2,
+        page_pb2,
+        rid_pb2,
+        security_pb2,
+        watermark_pb2,
+    )
     from vigil.events.v1 import envelope_pb2
 
     rid = rid_pb2.ResourceId(
@@ -66,16 +61,23 @@ def main() -> int:
         tenant="demo",
         clearance=security_pb2.CLASSIFICATION_PUBLIC,
     )
+    page = page_pb2.PageRequest(page_size=100)
+    err = error_pb2.VigilError(
+        error=error_pb2.ERROR_CODE_NOT_FOUND,
+        status_code=404,
+    )
+    wm = watermark_pb2.Watermark(value="wm1_0000000001f4a2_0000000000016018")
     env = envelope_pb2.EventEnvelope(
         spec_version="1.0",
         subject=rid.value,
         vigil_tenant=ctx.tenant,
         vigil_class=0,
+        vigil_watermark=wm.value,
     )
-    if env.subject != rid.value:
-        print("error: round-trip subject mismatch", file=sys.stderr)
+    if env.subject != rid.value or page.page_size != 100 or err.status_code != 404:
+        print("error: round-trip field mismatch", file=sys.stderr)
         return 1
-    print(f"python syntax and runtime import checks passed ({len(MODULES)} modules).")
+    print(f"python syntax and runtime import checks passed ({EXPECTED_COUNT} modules).")
     return 0
 
 
