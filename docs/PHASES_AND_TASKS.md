@@ -4,6 +4,7 @@
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Close P0 after the governance bootstrap merge -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-10-31 - Record the connected operations integration -->
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Recorded the P2 common-types slice and P1 residual blockers -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P2 after WIT worlds and Kafka round-trip merge; claim P3 Warden Security Kernel -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -132,7 +133,7 @@
 ---
 
 ## P2: Contracts & Interop Foundation
-**Status**: 🚀 In Progress — Kone Tshivhinda (Qoder) | Started: 2026-11-03
+**Status**: ✅ Complete - Kone Tshivhinda (Qoder, Gemini 4 Argon) | Started: 2026-11-03 | Closed: 2026-11-04 - Common types (PR #76), event envelope and AsyncAPI (PR #78), six-language Buf codegen and verification harness (PR #80), and WIT worlds (`vigil:policy`, `vigil:udf`) + `Java -> Kafka -> Python -> Rust` round-trip check (PR #82) merged to `develop`
 **Depends On**: P1
 **Blocks**: P3–P31
 **Complexity**: Medium
@@ -153,7 +154,7 @@
 ---
 
 ## P3: Warden Security Kernel
-**Status**: ⬜ Not Started
+**Status**: 🚀 In Progress - Kone Tshivhinda (Gemini 4 Argon) | Started: 2026-11-04
 **Depends On**: P2
 **Blocks**: P4–P43
 **Complexity**: Very High
