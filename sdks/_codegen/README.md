@@ -1,11 +1,21 @@
 <!-- Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Contract codegen verification harness documentation (P2 task 2.1, task 2.5) -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Document WIT world checks and Java -> Kafka -> Python -> Rust EventEnvelope round-trip (P2 task 2.4, Done-when) -->
 # Contract Codegen Harness (`sdks/_codegen`)
 
-`sdks/_codegen/` is the P2 contract codegen verification harness (tasks 2.1 and
-2.5). It verifies that the Protobuf contracts in [`proto/vigil/`](../../proto/vigil/)
-generate and compile cleanly across all six contract-consuming languages in the
-Vigil language charter (ADR-0001): **Java**, **Kotlin**, **Python**, **Go**,
-**TypeScript**, and **Rust**.
+`sdks/_codegen/` is the P2 contract codegen and interop verification harness
+(tasks 2.1, 2.4, and 2.5). It verifies that:
+
+1. The Protobuf contracts in [`proto/vigil/`](../../proto/vigil/) generate and
+   compile cleanly across all six contract-consuming languages in the Vigil
+   language charter (ADR-0001): **Java**, **Kotlin**, **Python**, **Go**,
+   **TypeScript**, and **Rust**.
+2. The WebAssembly Component Model WIT worlds in
+   [`proto/wit/common/`](../../proto/wit/common/) (`vigil:policy@1.0.0` and
+   `vigil:udf@1.0.0`) satisfy their structural and capability-sandbox contracts
+   (no ambient `wasi:*` imports).
+3. A sample `EventEnvelope` (wrapping a `vigil.common.v1.ResourceId` payload in
+   `google.protobuf.Any`) round-trips end-to-end across **Java -> Kafka ->
+   Python -> Rust** using a disposable `apache/kafka:4.4.0` KRaft broker.
 
 In P31, this harness extends into the ontology-scoped SDK generator driven by
 Ontology Metadata Service (OMS) type definitions.
@@ -68,5 +78,14 @@ bash sdks/_codegen/verify.sh
 2. Runs `buf lint proto` in `bufbuild/buf:1.73.0`.
 3. Runs `buf breaking proto` against `origin/develop` in `bufbuild/buf:1.73.0`.
 4. Runs `buf generate proto --template proto/buf.gen.yaml --path proto/vigil`.
-5. Compiles and tests the generated Rust, TypeScript, Python, Java, Kotlin, and
-   Go outputs.
+5. Compiles Java & Kotlin and runs `RoundTripMain` (`./gradlew emitSampleEvent`)
+   to serialize a canonical `EventEnvelope` wire payload.
+6. Launches an ephemeral `apache/kafka:4.4.0` KRaft container, publishes the
+   serialized envelope to `vigil.demo.ontology.types`, and consumes it back.
+7. Validates `proto/wit/common/{policy,udf}.wit`, byte-compiles and AST-checks
+   Python stubs, and verifies the Kafka-consumed `EventEnvelope` wire fields in
+   Python, writing `sdks/_codegen/gen/roundtrip/envelope.bin`.
+8. Compiles and runs `cargo test --locked` in `sdks/_codegen/rust`, decoding
+   `envelope.bin` via `prost` 0.14 and asserting all `EventEnvelope` and inner
+   `ResourceId` fields.
+9. Compiles the generated TypeScript and Go outputs.

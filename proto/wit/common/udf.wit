@@ -1,0 +1,143 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Ontology Function (UDF) WASM component world (P2 task 2.4)
+//
+// Component Model (WIT) contract for sandboxed Ontology Functions (UDFs) hosted
+// on Wasmtime LTS (ARCHITECTURE §8, VIGIL_DOMAIN_BLUEPRINT §1.8, §1.10).
+//
+// Sandbox invariants:
+// - Functions run as the calling user under the caller's verified PolicyContext.
+// - No ambient WASI filesystem, network egress, or environment imports in v1.
+// - Host imports enforce max 100,000 loaded objects and max 3 search-around hops.
+// - EDITS functions return proposed edits as a dry run and commit only through
+//   a function-backed Action rule (API_DESIGN FN-01).
+
+package vigil:udf@1.0.0;
+
+/// Data types for ontology function invocation, host queries, and proposed edits.
+interface types {
+    /// Function execution kind (VIGIL_DOMAIN_BLUEPRINT §1.8, API_DESIGN FN-01).
+    enum function-kind {
+        /// Reads object sets and returns computed values.
+        query,
+        /// Returns proposed ontology edits; commits only via an Action rule.
+        edits,
+    }
+
+    /// Ontology edit operations that an EDITS function may propose.
+    enum edit-op {
+        create-object,
+        modify-object,
+        delete-object,
+        add-link,
+        remove-link,
+    }
+
+    /// Reference to a typed ontology object instance.
+    record object-ref {
+        object-type: string,
+        pk: string,
+        rid: option<string>,
+    }
+
+    /// Single property assignment inside a proposed object edit.
+    record property-edit {
+        property: string,
+        /// Canonical JSON encoding of the property value.
+        value-json: string,
+    }
+
+    /// Proposed ontology mutation returned by an EDITS function.
+    record proposed-edit {
+        op: edit-op,
+        target: object-ref,
+        properties: list<property-edit>,
+        link-type: option<string>,
+        link-target: option<object-ref>,
+    }
+
+    /// Verified caller and execution metadata passed to the guest function.
+    record invocation-context {
+        function-api-name: string,
+        version: u32,
+        kind: function-kind,
+        tenant: string,
+        principal: string,
+        purpose: string,
+        case-id: option<string>,
+        policy-context-hash: string,
+        watermark: string,
+    }
+
+    /// Page of policy-filtered objects returned by a host object-set query.
+    record query-page {
+        /// Canonical JSON array of visible, redacted objects (API_DESIGN §A.3).
+        objects-json: string,
+        next-page-token: option<string>,
+        watermark: string,
+    }
+
+    /// Structured error returned by host callbacks or guest execution.
+    /// Published codes align with API_DESIGN §A.6 (VALIDATION_FAILED, POLICY_DENIED,
+    /// NOT_FOUND, LIMIT_EXCEEDED, DEADLINE_EXCEEDED).
+    record udf-error {
+        code: string,
+        message: string,
+    }
+
+    /// Output returned by a guest function invocation (API_DESIGN FN-01).
+    record udf-output {
+        /// Canonical JSON output payload for QUERY functions (or summary for EDITS).
+        result-json: string,
+        /// Proposed ontology edits (must be empty when kind is query).
+        proposed-edits: list<proposed-edit>,
+    }
+}
+
+/// Host capabilities provided by services/functions-host under the caller's PolicyContext.
+interface host {
+    use types.{query-page, udf-error};
+
+    /// Fetch a single visible object by type and primary key (OBJ-02 semantics).
+    /// Returns none when the object does not exist or is invisible under W1/W11.
+    get-object: func(
+        object-type: string,
+        pk: string,
+        select-properties: list<string>,
+    ) -> result<option<string>, udf-error>;
+
+    /// Execute a policy-filtered object-set query (OBJ-01 semantics).
+    /// Enforces the 100,000-object intermediate limit and 500-row page cap.
+    query-object-set: func(
+        object-set-json: string,
+        select-properties: list<string>,
+        page-size: u32,
+        page-token: option<string>,
+    ) -> result<query-page, udf-error>;
+
+    /// Traverse a single link hop from an object set (OBJ-03 / search_around).
+    /// Enforces the 3-hop search-around maximum across the invocation (Blueprint §1.10).
+    search-around: func(
+        object-set-json: string,
+        link-type: string,
+        select-properties: list<string>,
+        page-size: u32,
+        page-token: option<string>,
+    ) -> result<query-page, udf-error>;
+}
+
+/// Guest entrypoint exported by every compiled WASM UDF component.
+interface guest {
+    use types.{invocation-context, udf-output, udf-error};
+
+    /// Invoke the ontology function with caller context and validated JSON inputs.
+    invoke: func(
+        ctx: invocation-context,
+        inputs-json: string,
+    ) -> result<udf-output, udf-error>;
+}
+
+/// Sandboxed WASM component world for Ontology Functions (UDFs).
+world udf {
+    import host;
+    export types;
+    export guest;
+}

@@ -1,0 +1,147 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden policy evaluation WASM component world (P2 task 2.4)
+//
+// Component Model (WIT) contract for the pure Warden policy evaluator loaded by
+// Wasmtime hosts (such as services/functions-host, BACKEND_GUIDE §4.5).
+//
+// Sandbox invariants:
+// - Pure evaluation: no WASI filesystem, socket, random, or wall-clock imports.
+// - Evaluation time is passed explicitly inside policy-context.
+// - Hosts enforce fuel and epoch-interruption limits and map any trap to DENY.
+
+package vigil:policy@1.0.0;
+
+/// Shared security label, policy context, redaction, and decision types
+/// aligned with VIGIL_DOMAIN_BLUEPRINT §4 and proto/vigil/common/v1/security.proto.
+interface types {
+    /// Canonical five-level classification ladder (levels 0 to 4, Blueprint §4.2).
+    enum classification {
+        public,
+        restricted,
+        confidential,
+        secret,
+        top-secret,
+    }
+
+    /// Resource security label lambda(R) = <M, C, REL, P> (Blueprint §4.1).
+    record security-label {
+        /// Conjunctive marking identifiers; caller must hold every marking.
+        markings: list<string>,
+        /// Resource classification level; caller clearance must be >= classification.
+        classification: classification,
+        /// Disjunctive releasability principals; empty means unrestricted.
+        releasability: list<string>,
+        /// Permitted registered purpose codes; empty means unrestricted.
+        purpose-tags: list<string>,
+    }
+
+    /// Verified request policy context sigma (Blueprint §4.1, API_DESIGN §A.12).
+    record policy-context {
+        /// Typed principal identifier (user:<sub>, svc:<service>, agent:<session-id>).
+        principal: string,
+        /// Sovereign tenant slug.
+        tenant: string,
+        /// Verified clearance level of the caller.
+        clearance: classification,
+        /// Markings held by the caller.
+        markings: list<string>,
+        /// Expanded releasability communities held by the caller.
+        releasability: list<string>,
+        /// Registered purposes the caller is authorised to declare.
+        allowed-purposes: list<string>,
+        /// Purpose declared on this request (X-Vigil-Purpose).
+        declared-purpose: string,
+        /// Bound open case identifier when the purpose is case-predicated (W6).
+        case-id: option<string>,
+        /// Active OpenFGA roles held by the caller.
+        roles: list<string>,
+        /// Verified justification record identifier when a W7 checkpoint applies.
+        justification-id: option<string>,
+        /// Deterministic evaluation timestamp (milliseconds since Unix epoch).
+        evaluated-at-unix-ms: u64,
+        /// Verified policy-context hash (pch) used for cache keys and audit chains.
+        context-hash: string,
+    }
+
+    /// Published reason codes for property or link redaction (API_DESIGN §A.8).
+    enum redaction-reason {
+        marking,
+        classification,
+        releasability,
+        purpose,
+        case,
+        linkage-locked,
+        erased,
+        no-ai,
+    }
+
+    /// Per-property redaction or masking directive (W2, W3, Blueprint §4.7).
+    record property-redaction {
+        property: string,
+        reason: redaction-reason,
+        masked: bool,
+    }
+
+    /// Checkpoint classes requiring a bound W7 justification (Blueprint §4.3 W7).
+    enum checkpoint-kind {
+        special-category-access,
+        person-linkage,
+        export,
+        declassification,
+        reveal,
+    }
+
+    /// Mandatory obligations returned with an evaluation decision (Blueprint §4.7).
+    variant obligation {
+        audit-read,
+        require-justification(checkpoint-kind),
+        no-ai,
+        no-export,
+        suppress-small-cells(u32),
+        attribute(string),
+    }
+
+    /// Named property and security label pair for column-level evaluation (W2).
+    record property-label {
+        property: string,
+        label: security-label,
+    }
+
+    /// Structured evaluation result returned by Warden (Blueprint §4.7, POL-01).
+    record decision {
+        allow: bool,
+        deny-rule: option<string>,
+        deny-component: option<string>,
+        redactions: list<property-redaction>,
+        obligations: list<obligation>,
+        policy-version: string,
+    }
+}
+
+/// Pure policy evaluation and label-propagation entrypoints (W1-W12).
+interface evaluator {
+    use types.{policy-context, security-label, property-label, decision};
+
+    /// Evaluate read/write access on a resource and its column labels (W1, W2, W6-W11).
+    evaluate: func(
+        ctx: policy-context,
+        resource: security-label,
+        properties: list<property-label>,
+    ) -> decision;
+
+    /// Compute the derived security label for a transform over inputs (W5).
+    /// Returns an error code when releasability or purpose intersection is empty.
+    propagate: func(
+        inputs: list<security-label>,
+        transform: security-label,
+    ) -> result<security-label, string>;
+
+    /// Evaluate a Protobuf-encoded evaluation request and return Protobuf-encoded
+    /// decision bytes (BACKEND_GUIDE §4.5). Malformed input returns a deny payload.
+    evaluate-encoded: func(request-proto: list<u8>) -> list<u8>;
+}
+
+/// Pure WASM component world for Warden policy evaluation on Wasmtime hosts.
+world policy {
+    export types;
+    export evaluator;
+}
