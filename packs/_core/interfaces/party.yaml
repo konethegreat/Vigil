@@ -1,0 +1,10 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Party interface shared by Organisation and Person (P5 task 5.1, VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: InterfaceType
+metadata:
+  api_name: Party
+  display_name: Party
+  status: ACTIVE
+spec:
+  shared_properties:
+    display_name: { base_type: string, required: true }

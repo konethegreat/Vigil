@@ -1,0 +1,12 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core involves link type (Event <-> Organisation, M:N) (P5 task 5.1; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: LinkType
+metadata:
+  api_name: involves
+  inverse_api_name: involved_in_events
+  status: ACTIVE
+spec:
+  cardinality: MANY_TO_MANY
+  a: { object_type: Event }
+  b: { object_type: Organisation }
+  join_table: lt_event_involves

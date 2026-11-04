@@ -1,0 +1,11 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core at_place link type (Event -> Place, N:1) (P5 task 5.1; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: LinkType
+metadata:
+  api_name: at_place
+  inverse_api_name: events_at_place
+  status: ACTIVE
+spec:
+  cardinality: MANY_TO_ONE
+  a: { object_type: Event, fk_property: place_id }
+  b: { object_type: Place }

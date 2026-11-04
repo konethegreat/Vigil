@@ -1,0 +1,24 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Event object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Event
+  display_name: Event
+  description: Operational, corridor, or integrity event with spatial and temporal coordinates.
+  status: ACTIVE
+spec:
+  primary_key: event_id
+  title_property: event_type
+  existence_policy: SOURCE_WINS
+  security:
+    classification: PUBLIC
+    markings: []
+  properties:
+    event_id: { base_type: string, required: true }
+    event_type: { base_type: string, required: true, searchable: true }
+    occurred_at: { base_type: timestamp, required: true }
+    location: { base_type: geopoint }
+    place_id: { base_type: string }
+    document_id: { base_type: string }
+    severity: { base_type: integer }
+    confidence: { base_type: double }

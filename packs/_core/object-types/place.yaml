@@ -1,0 +1,23 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Place object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Place
+  display_name: Place
+  description: MDB ward, municipality, province, port, or operational site.
+  status: ACTIVE
+spec:
+  primary_key: place_id
+  title_property: name
+  existence_policy: SOURCE_WINS
+  security:
+    classification: PUBLIC
+    markings: []
+  properties:
+    place_id: { base_type: string, required: true }
+    name: { base_type: string, required: true, searchable: true }
+    place_kind: { base_type: string, required: true }
+    within_place_id: { base_type: string }
+    boundary: { base_type: geoshape }
+    centroid: { base_type: geopoint }
+    plus_code: { base_type: string }

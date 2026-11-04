@@ -1,0 +1,25 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Organisation object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Organisation
+  display_name: Organisation
+  description: Entity-resolved juristic person or organ of state cluster view.
+  status: ACTIVE
+  implements: [Party]
+spec:
+  primary_key: org_id
+  title_property: display_name
+  existence_policy: SOURCE_WINS
+  security:
+    classification: PUBLIC
+    markings: []
+  properties:
+    org_id: { base_type: string, required: true }
+    display_name: { base_type: string, required: true, searchable: true }
+    legal_names: { base_type: string, is_array: true }
+    registration_numbers: { base_type: string, is_array: true }
+    org_kind: { base_type: string }
+    country: { base_type: string }
+    member_count: { base_type: integer }
+    resolution_version: { base_type: integer }

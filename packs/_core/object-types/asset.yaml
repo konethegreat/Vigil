@@ -1,0 +1,24 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Asset object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Asset
+  display_name: Asset
+  description: Critical infrastructure asset, substation, berth, crane, or depot.
+  status: ACTIVE
+spec:
+  primary_key: asset_id
+  title_property: name
+  existence_policy: SOURCE_WINS
+  security:
+    classification: RESTRICTED
+    markings: []
+  properties:
+    asset_id: { base_type: string, required: true }
+    asset_class: { base_type: string, required: true }
+    name: { base_type: string, required: true, searchable: true }
+    operator_org_id: { base_type: string }
+    location: { base_type: geopoint }
+    status: { base_type: string, editable: true, conflict_policy: EDIT_WINS }
+    criticality: { base_type: integer }
+    security_controls: { base_type: string, column_markings: [SECURITY-MEASURE] }
