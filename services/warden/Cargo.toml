@@ -1,0 +1,21 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden Security Kernel Rust crate (P3 tasks 3.1, 3.2, 3.5, 3.7)
+[package]
+name = "vigil-warden"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+repository = "https://github.com/konethegreat/Vigil"
+publish = false
+
+[lib]
+name = "vigil_warden"
+path = "src/lib.rs"
+
+[dependencies]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = "warn"

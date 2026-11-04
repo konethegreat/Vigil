@@ -1,0 +1,93 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden tamper-evident hash-chained AuditService contract (P3 task 3.7, API_DESIGN section B.7)
+syntax = "proto3";
+
+package vigil.warden.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "vigil/common/v1/page.proto";
+import "vigil/common/v1/rid.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/warden/v1;wardenv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.warden.v1";
+
+// AuditChain holds the cryptographic hash-chain links and signature for one audit event (W12).
+message AuditChain {
+  // Base64 or hex digest of the immediately preceding audit event in the tenant partition.
+  string prev_hash = 1;
+  // Digest of (prev_hash || canonical_event_bytes).
+  string hash = 2;
+  // Cryptographic signature over hash produced by the audit signing key.
+  string signature = 3;
+  // Identifier of the KMS/OpenBao signing key version (for example audit-k1).
+  string signing_key_id = 4;
+}
+
+// AuditEvent is an immutable, hash-chained record in the Warden audit ledger (AUD-01).
+message AuditEvent {
+  // Monotonic per-tenant sequence number.
+  int64 seq = 1;
+  // UUIDv7 event identifier.
+  string event_id = 2;
+  // Structured event type (for example objects.query, policy.evaluate, actions.apply).
+  string event_type = 3;
+  // Timestamp when the action occurred.
+  google.protobuf.Timestamp occurred_at = 4;
+  // Timestamp when the audit record was committed.
+  google.protobuf.Timestamp recorded_at = 5;
+  // Principal that initiated the operation.
+  string actor = 6;
+  // Delegating user principal when actor is an agent or service acting on behalf of a user.
+  string on_behalf_of = 7;
+  // Declared processing purpose code.
+  string purpose = 8;
+  // Bound case identifier when applicable.
+  string case_id = 9;
+  // Target resource RID.
+  vigil.common.v1.ResourceId resource_rid = 10;
+  // Marking identifiers evaluated on the target resource.
+  repeated string marking_ids = 11;
+  // Policy decision outcome (ALLOW or DENY).
+  string decision = 12;
+  // Structured non-personal event metadata (for example query_hash, row_count, justification_id).
+  google.protobuf.Struct details = 13;
+  // Hash-chain and signature envelope.
+  AuditChain chain = 14;
+}
+
+// ListAuditEventsRequest queries the append-only audit ledger (AUD-01).
+message ListAuditEventsRequest {
+  // Start of time window (inclusive; window must be at most 31 days).
+  google.protobuf.Timestamp from = 1;
+  // End of time window (inclusive; window must be at most 31 days).
+  google.protobuf.Timestamp to = 2;
+  // Optional filter by actor principal.
+  string actor = 3;
+  // Optional filter by target resource RID.
+  vigil.common.v1.ResourceId resource_rid = 4;
+  // Optional filter by one or more event types.
+  repeated string event_types = 5;
+  // Optional filter by declared purpose code.
+  string purpose = 6;
+  // Optional filter by case identifier.
+  string case_id = 7;
+  // Optional filter by decision (ALLOW or DENY).
+  string decision = 8;
+  // Standard cursor pagination parameters.
+  vigil.common.v1.PageRequest page = 9;
+}
+
+// ListAuditEventsResponse returns a page of hash-chained audit events (AUD-01).
+message ListAuditEventsResponse {
+  // Matching audit events ordered by seq ascending.
+  repeated AuditEvent data = 1;
+  // Pagination metadata.
+  vigil.common.v1.PageInfo page_info = 2;
+}
+
+// AuditService provides read access to the tamper-evident Warden audit ledger (P3 task 3.7).
+service AuditService {
+  // ListAuditEvents queries hash-chained audit events for callers with role audit-reader and purpose AUDIT_OVERSIGHT (AUD-01).
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse);
+}
