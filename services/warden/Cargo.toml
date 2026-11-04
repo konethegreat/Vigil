@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden Security Kernel Rust crate (P3 tasks 3.1, 3.2, 3.5, 3.7)
+# Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add cdylib crate-type for Java FFM, Python ctypes, and WASM bindings (P3 task 3.3)
 [package]
 name = "vigil-warden"
 version = "0.1.0"
@@ -11,11 +12,12 @@ publish = false
 [lib]
 name = "vigil_warden"
 path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [lints.clippy]
 all = "warn"

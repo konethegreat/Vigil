@@ -1,5 +1,6 @@
 // Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden Security Kernel library root and property-based test suite (P3 tasks 3.1, 3.2, 3.3, 3.7)
 // Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Export pushdown and kms modules and add pushdown/KMS/shadow-swap verification tests (P3 tasks 3.4, 3.6, 3.8)
+// Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add C-ABI / WASM conformance entrypoints for Java FFM, Python ctypes, and TypeScript WebAssembly bindings (P3 task 3.3)
 //! Warden Security Kernel (`services/warden`).
 //!
 //! Pure, deterministic implementation of the Vigil security model (VIGIL_DOMAIN_BLUEPRINT
@@ -20,6 +21,58 @@ pub mod kms;
 pub mod model;
 pub mod pushdown;
 pub mod sha256;
+
+/// Returns the total number of conformance vectors in the shared Warden conformance suite.
+/// Exported with C ABI for Java FFM (`java.lang.foreign`), Python `ctypes`, and WASM hosts.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn warden_conformance_count() -> u32 {
+    conformance::build_conformance_suite().len() as u32
+}
+
+/// Executes the full 551-case shared conformance suite and W12 hash-chained audit verification,
+/// returning the number of verified cases (`>= 500`) or `0` on failure.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn warden_run_conformance_suite() -> u32 {
+    let suite = conformance::build_conformance_suite();
+    let count = conformance::verify_conformance_suite();
+    let mut ledger = audit::AuditLedger::new("demo", "audit-k1", b"synthetic-audit-signing-key-v1");
+    for (idx, case) in suite.iter().enumerate() {
+        let decision = engine::evaluate(&case.input);
+        ledger.record_decision(
+            format!("01926e64-0000-7000-8000-{idx:012}"),
+            "policy.evaluate",
+            &case.input,
+            &decision,
+        );
+    }
+    if ledger.verify().is_err() {
+        return 0;
+    }
+    count as u32
+}
+
+/// Evaluates conformance vector `case_index` and returns a packed 32-bit status word:
+/// - bit 0: `1` if `decision.allow` is true, `0` otherwise.
+/// - bits 1..=15: `decision.external_http_status` (`200`, `403`, or `404`).
+/// - bits 16..=23: `decision.redactions.len()`.
+/// - bits 24..=30: `decision.obligations.len()`.
+/// - bit 31: `1` if `case_index` is out of bounds.
+#[allow(unsafe_code)]
+#[unsafe(no_mangle)]
+pub extern "C" fn warden_eval_conformance_case(case_index: u32) -> u32 {
+    let suite = conformance::build_conformance_suite();
+    let Some(case) = suite.get(case_index as usize) else {
+        return 1u32 << 31;
+    };
+    let decision = engine::evaluate(&case.input);
+    let allow_bit = u32::from(decision.allow);
+    let status_bits = u32::from(decision.external_http_status & 0x7fff) << 1;
+    let redact_bits = ((decision.redactions.len().min(255)) as u32) << 16;
+    let oblig_bits = ((decision.obligations.len().min(127)) as u32) << 24;
+    allow_bit | status_bits | redact_bits | oblig_bits
+}
 
 #[cfg(test)]
 mod tests {

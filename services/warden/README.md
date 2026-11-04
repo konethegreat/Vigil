@@ -1,5 +1,6 @@
 <!-- Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden Security Kernel documentation (P3 tasks 3.1, 3.2, 3.3, 3.5, 3.7) -->
 <!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Document pushdown compilers, KMS v1, and PostgreSQL 18 security DDL migrations (P3 tasks 3.4, 3.6, 3.8) -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Document Java FFM, Python, and TypeScript/WASM bindings and the PostgreSQL 18 security verification suite (P3 tasks 3.3, 3.9) -->
 # Warden Security Kernel (`services/warden`)
 
 `services/warden` is the Rust security kernel for Vigil (P3). Every read, write,
@@ -73,13 +74,19 @@ No service reads or writes tenant data around it (ADR-0005).
     - [`sql/control/V3_002__create_warden_registry.sql`](sql/control/V3_002__create_warden_registry.sql): `warden.marking`, `warden.purpose`, and `warden.gate_authorisation`.
   - Per-tenant (`vigil_t_<slug>`):
     - [`sql/tenant/V3_001__create_vigil_sec.sql`](sql/tenant/V3_001__create_vigil_sec.sql): `vigil_sec.ctx_key`, `vigil_sec.verified_payload()`, `vigil_sec.apply_ctx()`, `vigil_sec.ctx_ok()`, `vigil_sec.ctx_markings()`, `vigil_sec.ctx_clearance()`, `vigil_sec.ctx_releasability()`, `vigil_sec.ctx_purpose()`, and `vigil_sec.object_rid()`.
-    - [`sql/tenant/V3_002__create_justification.sql`](sql/tenant/V3_002__create_justification.sql): `vigil_sec.justification` with `vigil_sec.forbid_justification_mutation()`.
+    - [`sql/tenant/V3_002__create_justification.sql`](sql/tenant/V3_002__create_justification.sql): `vigil_sec.justification` with erasure-only mutation rules.
+    - [`sql/verify_p3_pg18.sql`](sql/verify_p3_pg18.sql): PostgreSQL 18 verification suite (MSG-023 / MSG-030) exercising control-plane tables, W12 append-only triggers, `vigil_sec.apply_ctx()` HMAC verification, 3-marking conjunctive RLS enforcement, and `security_invoker` column-masking views.
+- **Polyglot Language Bindings (task 3.3):**
+  - Java 25 Panama FFM binding & Core audit chain verifier:
+    [`services/core/src/main/java/vigil/core/audit/WardenJavaBinding.java`](../../services/core/src/main/java/vigil/core/audit/WardenJavaBinding.java)
+    and [`services/core/src/main/java/vigil/core/audit/AuditChainVerifier.java`](../../services/core/src/main/java/vigil/core/audit/AuditChainVerifier.java).
+  - Python C-ABI binding: [`bindings/python/warden_binding.py`](bindings/python/warden_binding.py).
+  - TypeScript / WebAssembly binding (`wasm32-unknown-unknown`):
+    [`bindings/typescript/verify_wasm.mjs`](bindings/typescript/verify_wasm.mjs) and
+    [`bindings/typescript/warden_wasm.d.ts`](bindings/typescript/warden_wasm.d.ts).
 
 ## Running checks
 
 ```sh
-cd services/warden
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test --locked
+bash services/warden/verify_p3.sh
 ```
