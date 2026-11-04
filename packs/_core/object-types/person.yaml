@@ -1,0 +1,23 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Person object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Person
+  display_name: Person
+  description: Entity-resolved natural person cluster view. No gender, citizenship, or population-group fields.
+  status: ACTIVE
+  implements: [Party]
+spec:
+  primary_key: person_id
+  title_property: display_name
+  existence_policy: SOURCE_WINS
+  security:
+    classification: CONFIDENTIAL
+    markings: [PII]
+  properties:
+    person_id: { base_type: string, required: true }
+    display_name: { base_type: string, required: true, searchable: true }
+    name_variants: { base_type: string, is_array: true }
+    id_psn: { base_type: string }
+    id_cipher: { base_type: cipher_text, column_markings: [PII] }
+    member_count: { base_type: integer }

@@ -1,0 +1,445 @@
+// Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Ontology Metadata Service (OMS) type system, versioning, DDL journal, and metadata contracts (P5 tasks 5.1-5.5)
+syntax = "proto3";
+
+package vigil.ontology.v1;
+
+import "google/protobuf/timestamp.proto";
+import "vigil/common/v1/page.proto";
+import "vigil/common/v1/rid.proto";
+import "vigil/common/v1/security.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/ontology/v1;ontologyv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.ontology.v1";
+
+// TypeKind classifies an ontology metadata entity (DATA_MODEL section 3.2).
+enum TypeKind {
+  // Unspecified type kind.
+  TYPE_KIND_UNSPECIFIED = 0;
+  // Object type (for example Organisation, Person, Supplier).
+  TYPE_KIND_OBJECT = 1;
+  // Link type between two object types.
+  TYPE_KIND_LINK = 2;
+  // Shared interface type.
+  TYPE_KIND_INTERFACE = 3;
+  // Kinetic action type.
+  TYPE_KIND_ACTION = 4;
+  // Dynamic function type.
+  TYPE_KIND_FUNCTION = 5;
+  // Semantic value type (for example za.cipc_registration_number).
+  TYPE_KIND_VALUE = 6;
+}
+
+// TypeStatus tracks lifecycle readiness of an ontology definition (DATA_MODEL section 3.3).
+enum TypeStatus {
+  // Unspecified status.
+  TYPE_STATUS_UNSPECIFIED = 0;
+  // Experimental definition.
+  TYPE_STATUS_EXPERIMENTAL = 1;
+  // Active production definition.
+  TYPE_STATUS_ACTIVE = 2;
+  // Deprecated definition with sunset metadata.
+  TYPE_STATUS_DEPRECATED = 3;
+}
+
+// CompatibilityClass classifies a published type version relative to its predecessor (DATA_MODEL section 3.2).
+enum CompatibilityClass {
+  // Unspecified compatibility class.
+  COMPATIBILITY_CLASS_UNSPECIFIED = 0;
+  // Version 1 of a newly registered type.
+  COMPATIBILITY_CLASS_INITIAL = 1;
+  // Backwards-compatible additive evolution.
+  COMPATIBILITY_CLASS_COMPATIBLE = 2;
+  // Breaking schema evolution requiring a migration plan and shadow-table reindex.
+  COMPATIBILITY_CLASS_BREAKING = 3;
+}
+
+// PropertyBaseType enumerates the 17 canonical property base types (VIGIL_DOMAIN_BLUEPRINT section 1.4, DATA_MODEL section 3.3).
+enum PropertyBaseType {
+  // Unspecified base type.
+  PROPERTY_BASE_TYPE_UNSPECIFIED = 0;
+  // Boolean scalar.
+  PROPERTY_BASE_TYPE_BOOLEAN = 1;
+  // 32-bit signed integer.
+  PROPERTY_BASE_TYPE_INTEGER = 2;
+  // 64-bit signed integer.
+  PROPERTY_BASE_TYPE_LONG = 3;
+  // IEEE-754 double-precision float.
+  PROPERTY_BASE_TYPE_DOUBLE = 4;
+  // Exact fixed-point decimal (for example currency amounts).
+  PROPERTY_BASE_TYPE_DECIMAL = 5;
+  // UTF-8 string.
+  PROPERTY_BASE_TYPE_STRING = 6;
+  // ISO-8601 calendar date.
+  PROPERTY_BASE_TYPE_DATE = 7;
+  // UTC timestamp with microsecond precision.
+  PROPERTY_BASE_TYPE_TIMESTAMP = 8;
+  // Structured JSON object with schema.
+  PROPERTY_BASE_TYPE_STRUCT = 9;
+  // WGS84 Point geometry(Point, 4326).
+  PROPERTY_BASE_TYPE_GEOPOINT = 10;
+  // WGS84 Polygon/MultiPolygon geometry(Geometry, 4326).
+  PROPERTY_BASE_TYPE_GEOSHAPE = 11;
+  // ClickHouse time series reference.
+  PROPERTY_BASE_TYPE_TIME_SERIES = 12;
+  // ClickHouse geotemporal track reference.
+  PROPERTY_BASE_TYPE_GEOTEMPORAL_SERIES = 13;
+  // pgvector / LanceDB embedding vector.
+  PROPERTY_BASE_TYPE_VECTOR = 14;
+  // Content-addressed media reference.
+  PROPERTY_BASE_TYPE_MEDIA_REFERENCE = 15;
+  // KMS channel-encrypted ciphertext with masked display.
+  PROPERTY_BASE_TYPE_CIPHER_TEXT = 16;
+  // Security marking identifier.
+  PROPERTY_BASE_TYPE_MARKING = 17;
+}
+
+// ConflictPolicy governs merge precedence between source datasets and user edits (VIGIL_DOMAIN_BLUEPRINT section 1.9).
+enum ConflictPolicy {
+  // Unspecified conflict policy.
+  CONFLICT_POLICY_UNSPECIFIED = 0;
+  // Source dataset values overwrite edits on re-ingest.
+  CONFLICT_POLICY_SOURCE_WINS = 1;
+  // Applied action edits take precedence over source dataset refreshes.
+  CONFLICT_POLICY_EDIT_WINS = 2;
+  // Most recent timestamp between source and edit wins.
+  CONFLICT_POLICY_LATEST_TIMESTAMP = 3;
+}
+
+// LinkCardinality defines the structural relationship of a LinkType (DATA_MODEL section 3.3).
+enum LinkCardinality {
+  // Unspecified cardinality.
+  LINK_CARDINALITY_UNSPECIFIED = 0;
+  // One-to-one foreign key on side A.
+  LINK_CARDINALITY_ONE_TO_ONE = 1;
+  // Many-to-one foreign key on side A.
+  LINK_CARDINALITY_MANY_TO_ONE = 2;
+  // Many-to-many join table (objects.lt_<name>).
+  LINK_CARDINALITY_MANY_TO_MANY = 3;
+  // Object-backed link mediated by an intermediate ObjectType (for example CaseParty).
+  LINK_CARDINALITY_OBJECT_BACKED = 4;
+}
+
+// OutcomeClass categorises the legal and operational impact of an ActionType (DATA_MODEL section 3.3, POPIA s71).
+enum OutcomeClass {
+  // Unspecified outcome class.
+  OUTCOME_CLASS_UNSPECIFIED = 0;
+  // Informational annotation or bookmark.
+  OUTCOME_CLASS_INFORMATIONAL = 1;
+  // Standard operational workflow mutation.
+  OUTCOME_CLASS_OPERATIONAL = 2;
+  // Adverse finding or referral (requires human approval under POPIA s71).
+  OUTCOME_CLASS_ADVERSE = 3;
+  // Binding legal or statutory effect (requires two-person human approval).
+  OUTCOME_CLASS_LEGAL_EFFECT = 4;
+}
+
+// PackRef identifies the ontology pack and semantic version that contributed a type.
+message PackRef {
+  // Pack slug (for example _core, integrity, corridors).
+  string name = 1;
+  // Pack semantic version (for example 1.0.0).
+  string version = 2;
+}
+
+// TypeSecuritySummary carries the default classification and markings of a type or column (API_DESIGN OMS-01, OMS-02).
+message TypeSecuritySummary {
+  // Default classification level.
+  vigil.common.v1.Classification classification = 1;
+  // Default conjunctive markings.
+  vigil.common.v1.MarkingSet markings = 2;
+}
+
+// PropertyTypeDescriptor describes a property on an ObjectType (API_DESIGN OMS-02).
+message PropertyTypeDescriptor {
+  // Property API name (snake_case).
+  string api_name = 1;
+  // Property base type.
+  PropertyBaseType base_type = 2;
+  // True when the property is an array of base_type.
+  bool is_array = 3;
+  // Optional semantic value type (for example za.cipc_registration_number).
+  string value_type = 4;
+  // True when NULL values are permitted.
+  bool nullable = 5;
+  // True when an ActionType may edit this property.
+  bool editable = 6;
+  // Conflict policy when editable is true.
+  ConflictPolicy conflict_policy = 7;
+  // True when indexed into OpenSearch for full-text or filter queries.
+  bool searchable = 8;
+  // Column-level security classification and markings.
+  TypeSecuritySummary column_security = 9;
+  // True when the current caller holds the markings and clearance required to read this column.
+  bool accessible = 10;
+}
+
+// LinkTypeSummary describes an outbound or inbound link on an ObjectType (API_DESIGN OMS-02).
+message LinkTypeSummary {
+  // Link API name from the source object's perspective.
+  string api_name = 1;
+  // Inverse API name from the target object's perspective.
+  string inverse_api_name = 2;
+  // Link cardinality.
+  LinkCardinality cardinality = 3;
+  // Target ObjectType API name.
+  string target_object_type = 4;
+}
+
+// ObjectTypeSummary is the compact summary returned by ListObjectTypes (API_DESIGN OMS-01).
+message ObjectTypeSummary {
+  // ObjectType API name (PascalCase).
+  string api_name = 1;
+  // Canonical ObjectType RID.
+  vigil.common.v1.ResourceId rid = 2;
+  // Human-readable display name.
+  string display_name = 3;
+  // Lifecycle status.
+  TypeStatus status = 4;
+  // Current published version number on the branch.
+  int32 version = 5;
+  // Primary key property API name.
+  string primary_key = 6;
+  // Title property API name.
+  string title_property = 7;
+  // Implemented interface API names.
+  repeated string implements_interfaces = 8;
+  // Originating pack metadata.
+  PackRef pack = 9;
+  // Default type-level security label.
+  TypeSecuritySummary security = 10;
+}
+
+// ObjectTypeDetail is the full definition returned by GetObjectType (API_DESIGN OMS-02).
+message ObjectTypeDetail {
+  // Summary fields.
+  ObjectTypeSummary summary = 1;
+  // Property definitions on this object type.
+  repeated PropertyTypeDescriptor properties = 2;
+  // Link definitions attached to this object type.
+  repeated LinkTypeSummary links = 3;
+  // Backing dataset RIDs visible to the caller.
+  repeated vigil.common.v1.ResourceId datasources = 4;
+  // Existence conflict policy (SOURCE_WINS or EDIT_WINS).
+  ConflictPolicy existence_policy = 5;
+}
+
+// SchemaChangeDiff describes a single schema change between consecutive versions (API_DESIGN OMS-03).
+message SchemaChangeDiff {
+  // Change operation code (for example ADD_PROPERTY, DROP_PROPERTY, CHANGE_BASE_TYPE).
+  string change = 1;
+  // Affected property API name.
+  string property_name = 2;
+  // Compatibility impact of this change.
+  CompatibilityClass compatibility = 3;
+}
+
+// TypeVersionRecord represents an immutable published version row in oms.type_version (API_DESIGN OMS-03, OMS-04).
+message TypeVersionRecord {
+  // Type version RID.
+  vigil.common.v1.ResourceId rid = 1;
+  // Type API name.
+  string api_name = 2;
+  //Type kind.
+  TypeKind kind = 3;
+  // Sequential version number on the branch.
+  int32 version = 4;
+  // Compatibility class relative to the previous version.
+  CompatibilityClass compat = 5;
+  // Lowercase hex SHA-256 of the canonical RFC 8785 definition JSON.
+  string definition_sha256 = 6;
+  // Schema branch name (for example main).
+  string branch = 7;
+  // Principal who published the version.
+  string published_by = 8;
+  // Timestamp when the version was published.
+  google.protobuf.Timestamp published_at = 9;
+  // Canonical JSON definition.
+  string canonical_definition_json = 10;
+  // True when a migration plan was attached.
+  bool has_migration_plan = 11;
+}
+
+// PhysicalDdlJournalEntry tracks the generated PostgreSQL and OpenSearch DDL for a type version (DATA_MODEL section 3.4).
+message PhysicalDdlJournalEntry {
+  // DDL journal entry UUID.
+  string ddl_id = 1;
+  // Execution status (PENDING, APPLIED, FAILED).
+  string status = 2;
+  // Lowercase hex SHA-256 of the generated SQL statements.
+  string statements_sha256 = 3;
+}
+
+// OntologyTypePublishedEvent is the payload of vigil.ontology.type.published.v1 (P5 task 5.5).
+message OntologyTypePublishedEvent {
+  // Published type version RID.
+  vigil.common.v1.ResourceId type_version_rid = 1;
+  // Stable type RID across versions.
+  vigil.common.v1.ResourceId type_rid = 2;
+  // Type kind.
+  TypeKind kind = 3;
+  // Type API name.
+  string api_name = 4;
+  // Version number.
+  int32 version = 5;
+  // Compatibility classification.
+  CompatibilityClass compat = 6;
+  // Schema branch name.
+  string branch = 7;
+  // Lowercase hex SHA-256 of the canonical definition.
+  string definition_sha256 = 8;
+  // Timestamp of publication.
+  google.protobuf.Timestamp published_at = 9;
+}
+
+// ActionParameterDescriptor describes a parameter on an ActionType (API_DESIGN OMS-05).
+message ActionParameterDescriptor {
+  // Parameter name.
+  string name = 1;
+  // Parameter type (for example object_ref, string, boolean).
+  string parameter_type = 2;
+  // Referenced ObjectType API name when parameter_type is object_ref.
+  string object_type = 3;
+  // True when the parameter is mandatory.
+  bool required = 4;
+}
+
+// SubmissionCriterionDescriptor describes a pre-execution validation rule on an ActionType (API_DESIGN OMS-05).
+message SubmissionCriterionDescriptor {
+  // Criterion identifier.
+  string name = 1;
+  // User-facing message returned when the criterion fails.
+  string failure_message = 2;
+  // Expression string (returned only to callers holding ontology-editor).
+  string expression = 3;
+}
+
+// ListObjectTypesRequest lists visible object types on a schema branch (API_DESIGN OMS-01).
+message ListObjectTypesRequest {
+  // Schema branch name (defaults to main).
+  string branch = 1;
+  // Optional status filter.
+  repeated TypeStatus status = 2;
+  // Optional interface API name filter.
+  string implements_interface = 3;
+  // Pagination parameters.
+  vigil.common.v1.PageRequest page = 4;
+  // Caller policy context for type-level marking visibility (W11).
+  vigil.common.v1.PolicyContext policy_context = 5;
+}
+
+// ListObjectTypesResponse returns visible object types (API_DESIGN OMS-01).
+message ListObjectTypesResponse {
+  // Visible object type summaries.
+  repeated ObjectTypeSummary data = 1;
+  // Pagination metadata.
+  vigil.common.v1.PageInfo page_info = 2;
+}
+
+// GetObjectTypeRequest fetches a single ObjectType definition on a branch (API_DESIGN OMS-02).
+message GetObjectTypeRequest {
+  // ObjectType API name.
+  string object_type = 1;
+  // Schema branch name (defaults to main).
+  string branch = 2;
+  // Version number (0 means current published version).
+  int32 version = 3;
+  // Caller policy context.
+  vigil.common.v1.PolicyContext policy_context = 4;
+}
+
+// GetObjectTypeResponse returns the full ObjectType detail (API_DESIGN OMS-02).
+message GetObjectTypeResponse {
+  // Detailed ObjectType definition.
+  ObjectTypeDetail object_type = 1;
+}
+
+// PublishObjectTypeVersionRequest publishes a new immutable version of an ObjectType (API_DESIGN OMS-03).
+message PublishObjectTypeVersionRequest {
+  // Target ObjectType API name.
+  string object_type = 1;
+  // Target schema branch (defaults to main).
+  string branch = 2;
+  // Definition format (YAML or JSON).
+  string definition_format = 3;
+  // Raw YAML or JSON definition payload.
+  string definition = 4;
+  // Optimistic concurrency check against the current version on the branch.
+  int32 expected_current_version = 5;
+  // Migration plan JSON (mandatory when compatibility is BREAKING).
+  string migration_plan_json = 6;
+  // When true, validates and computes the diff without persisting a new version.
+  bool dry_run = 7;
+  // Caller policy context.
+  vigil.common.v1.PolicyContext policy_context = 8;
+}
+
+// PublishObjectTypeVersionResponse returns the published TypeVersionRecord, diff, and physical DDL entry (API_DESIGN OMS-03).
+message PublishObjectTypeVersionResponse {
+  // Published (or dry-run computed) type version record.
+  TypeVersionRecord type_version = 1;
+  // Computed schema changes relative to the previous version.
+  repeated SchemaChangeDiff diff = 2;
+  // Journaled physical DDL status.
+  PhysicalDdlJournalEntry physical_ddl = 3;
+}
+
+// GetTypeVersionRequest fetches an immutable type version by RID (API_DESIGN OMS-04).
+message GetTypeVersionRequest {
+  // Type version RID.
+  vigil.common.v1.ResourceId type_version_rid = 1;
+}
+
+// GetTypeVersionResponse returns the immutable type version record (API_DESIGN OMS-04).
+message GetTypeVersionResponse {
+  // Immutable type version record.
+  TypeVersionRecord type_version = 1;
+}
+
+// GetActionTypeRequest fetches an ActionType definition by API name (API_DESIGN OMS-05).
+message GetActionTypeRequest {
+  // ActionType API name (kebab-case).
+  string action_type = 1;
+  // Schema branch name (defaults to main).
+  string branch = 2;
+}
+
+// GetActionTypeResponse returns the ActionType metadata for form generation and MCP tools (API_DESIGN OMS-05).
+message GetActionTypeResponse {
+  // ActionType API name.
+  string api_name = 1;
+  // Display name.
+  string display_name = 2;
+  // Outcome class (INFORMATIONAL, OPERATIONAL, ADVERSE, LEGAL_EFFECT).
+  OutcomeClass outcome_class = 3;
+  // True when human approval is mandatory before applying.
+  bool requires_human_approval = 4;
+  // True when an AI agent may stage this action.
+  bool agent_executable = 5;
+  // True when a bound justification is mandatory.
+  bool justification_required = 6;
+  // Allowed statutory/operational purposes.
+  repeated vigil.common.v1.Purpose allowed_purposes = 7;
+  // Action parameters.
+  repeated ActionParameterDescriptor parameters = 8;
+  // Submission criteria.
+  repeated SubmissionCriterionDescriptor submission_criteria = 9;
+  // True when a synchronous writeback webhook is configured.
+  bool has_writeback_webhook = 10;
+  // Maximum objects mutated per run (1..10000).
+  int32 max_objects = 11;
+}
+
+// OntologyService manages the Vigil Ontology Metadata Service (API_DESIGN section B.1).
+service OntologyService {
+  // Lists object types visible to the caller on a schema branch (OMS-01).
+  rpc ListObjectTypes(ListObjectTypesRequest) returns (ListObjectTypesResponse);
+  // Gets the full definition of an object type and per-column accessibility (OMS-02).
+  rpc GetObjectType(GetObjectTypeRequest) returns (GetObjectTypeResponse);
+  // Validates and publishes a new immutable version of an object type (OMS-03).
+  rpc PublishObjectTypeVersion(PublishObjectTypeVersionRequest) returns (PublishObjectTypeVersionResponse);
+  // Gets an immutable type version record by RID (OMS-04).
+  rpc GetTypeVersion(GetTypeVersionRequest) returns (GetTypeVersionResponse);
+  // Gets an action type definition for form generation and agent tool discovery (OMS-05).
+  rpc GetActionType(GetActionTypeRequest) returns (GetActionTypeResponse);
+}

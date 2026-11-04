@@ -1,0 +1,11 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core documented_by link type (Event -> Document, N:1) (P5 task 5.1; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: LinkType
+metadata:
+  api_name: documented_by
+  inverse_api_name: documents_events
+  status: ACTIVE
+spec:
+  cardinality: MANY_TO_ONE
+  a: { object_type: Event, fk_property: document_id }
+  b: { object_type: Document }

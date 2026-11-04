@@ -1,0 +1,11 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core within link type (Place -> Place, N:1) (P5 task 5.1; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: LinkType
+metadata:
+  api_name: within
+  inverse_api_name: contains_places
+  status: ACTIVE
+spec:
+  cardinality: MANY_TO_ONE
+  a: { object_type: Place, fk_property: within_place_id }
+  b: { object_type: Place }

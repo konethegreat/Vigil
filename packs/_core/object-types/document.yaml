@@ -1,0 +1,24 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Document object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Document
+  display_name: Document
+  description: Content-addressed source document (doc:<sha256>).
+  status: ACTIVE
+spec:
+  primary_key: document_id
+  title_property: title
+  existence_policy: SOURCE_WINS
+  security:
+    classification: PUBLIC
+    markings: []
+  properties:
+    document_id: { base_type: string, required: true }
+    title: { base_type: string, required: true, searchable: true }
+    media: { base_type: media_reference }
+    sha256: { base_type: string, required: true }
+    document_kind: { base_type: string }
+    source_url: { base_type: string }
+    language: { base_type: string }
+    extraction_status: { base_type: string, editable: true, conflict_policy: EDIT_WINS }

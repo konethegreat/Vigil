@@ -1,0 +1,26 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core ontology pack manifest (P5 task 5.4, VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: PackManifest
+metadata:
+  api_name: _core
+  display_name: Vigil Core Ontology Pack
+  status: ACTIVE
+spec:
+  version: 1.0.0
+  owner_phase: P5
+  depends_on: []
+  object_types:
+    - Organisation
+    - Person
+    - Place
+    - Asset
+    - Event
+    - Document
+    - Identifier
+  interfaces:
+    - Party
+  link_types:
+    - within
+    - involves
+    - at_place
+    - documented_by

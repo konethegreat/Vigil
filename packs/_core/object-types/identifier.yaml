@@ -1,0 +1,22 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Core Identifier object type (P5 tasks 5.1, 5.4; VIGIL_DOMAIN_BLUEPRINT section 2)
+api_version: vigil.ontology/v1
+kind: ObjectType
+metadata:
+  api_name: Identifier
+  display_name: Identifier
+  description: Keyed HMAC-SHA-256 pseudonymised identifier (idf_<base32>) linking records without exposing raw values.
+  status: ACTIVE
+spec:
+  primary_key: identifier_id
+  title_property: value_masked
+  existence_policy: SOURCE_WINS
+  security:
+    classification: RESTRICTED
+    markings: [PII]
+  properties:
+    identifier_id: { base_type: string, required: true }
+    kind: { base_type: string, required: true, searchable: true }
+    value_psn: { base_type: string, required: true }
+    value_cipher: { base_type: cipher_text, column_markings: [PII] }
+    value_masked: { base_type: string, required: true }
+    validity: { base_type: boolean }

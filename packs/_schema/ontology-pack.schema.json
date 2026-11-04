@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vigil.africa/schemas/ontology-pack/v1/ontology-pack.schema.json",
+  "$comment": "Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - JSON Schema for Vigil ontology packs (P5 task 5.4, VIGIL_DOMAIN_BLUEPRINT section 1.12)",
+  "title": "VigilOntologyPackResource",
+  "type": "object",
+  "required": ["api_version", "kind", "metadata", "spec"],
+  "properties": {
+    "api_version": {
+      "type": "string",
+      "const": "vigil.ontology/v1"
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["PackManifest", "ObjectType", "LinkType", "InterfaceType", "ActionType", "FunctionType", "ValueType"]
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["api_name"],
+      "properties": {
+        "api_name": { "type": "string", "minLength": 1, "maxLength": 63 },
+        "display_name": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["EXPERIMENTAL", "ACTIVE", "DEPRECATED"] },
+        "implements": { "type": "array", "items": { "type": "string" } },
+        "inverse_api_name": { "type": "string" }
+      }
+    },
+    "spec": {
+      "type": "object"
+    }
+  }
+}
