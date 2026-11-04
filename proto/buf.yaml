@@ -1,4 +1,5 @@
 # Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Buf v2 workspace for the Vigil contracts (P2 task 2.1)
+# Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Ignore initial file-option bootstrap on common/events v1 while no generated stubs are consumed yet (P2 task 2.1)
 version: v2
 modules:
   - path: .
@@ -8,3 +9,13 @@ lint:
 breaking:
   use:
     - FILE
+  ignore_only:
+    FILE_SAME_GO_PACKAGE:
+      - vigil/common/v1
+      - vigil/events/v1
+    FILE_SAME_JAVA_MULTIPLE_FILES:
+      - vigil/common/v1
+      - vigil/events/v1
+    FILE_SAME_JAVA_PACKAGE:
+      - vigil/common/v1
+      - vigil/events/v1

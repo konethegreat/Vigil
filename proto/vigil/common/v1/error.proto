@@ -1,10 +1,15 @@
 // Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common error envelope and catalogue (P2 task 2.2)
+// Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add Go and Java package options for polyglot codegen (P2 task 2.1)
 syntax = "proto3";
 
 package vigil.common.v1;
 
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.common.v1";
 
 // ErrorCode is the machine-readable error catalogue (API_DESIGN §A.6).
 //

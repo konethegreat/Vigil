@@ -2,6 +2,7 @@
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Use Syft's per-ecosystem network licence lookup
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Ignore non-coordinate Maven purls from Gradle lockfile headers
 # Modified by Kone Tshivhinda (Qoder) on 2026-10-31 — Refresh action pins
+# Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Read first-party Cargo.toml and sdks package manifests (P2 task 2.5)
 #
 # Skill §3 sbom-license-scan; ADR-0003 "Controls": block red licences, and amber licences without
 # an entry in .github/licence-allowlist.yml, on every PR. Required status check: sbom-license-scan.
@@ -303,7 +304,22 @@ jobs:
                       licence = licence.get("text")
                   if project.get("name") and isinstance(licence, str):
                       owned[project["name"]] = licence
-              for path in Path("apps").glob("*/package.json"):
+              for path in [
+                  *Path("services").glob("**/Cargo.toml"),
+                  *Path("templates/golden-paths").glob("**/Cargo.toml"),
+                  *Path("sdks").glob("**/Cargo.toml"),
+              ]:
+                  try:
+                      pkg = tomllib.loads(path.read_text(encoding="utf-8")).get("package", {})
+                  except (OSError, tomllib.TOMLDecodeError):
+                      continue
+                  if pkg.get("name") and isinstance(pkg.get("license"), str):
+                      owned[pkg["name"]] = pkg["license"]
+              for path in [
+                  *Path("apps").glob("*/package.json"),
+                  *Path("templates/golden-paths").glob("*/*/package.json"),
+                  *Path("sdks").glob("**/package.json"),
+              ]:
                   try:
                       manifest = json.loads(path.read_text(encoding="utf-8"))
                   except (OSError, json.JSONDecodeError):

@@ -1,0 +1,15 @@
+# Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Rust contract codegen compile check (P2 task 2.5)
+[package]
+name = "vigil-contracts-codegen-check"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+prost = "0.14.1"
+prost-types = "0.14.1"
+
+[lints.rust]
+unsafe_code = "forbid"

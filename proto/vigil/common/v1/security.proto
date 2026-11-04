@@ -1,9 +1,14 @@
 // Written by Kone Tshivhinda (Qoder) on 2026-11-03 — Common security types: classification, markings, purpose and policy context (P2 task 2.2)
+// Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Add Go and Java package options for polyglot codegen (P2 task 2.1)
 syntax = "proto3";
 
 package vigil.common.v1;
 
 import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/konethegreat/Vigil/gen/go/vigil/common/v1;commonv1";
+option java_multiple_files = true;
+option java_package = "africa.vigil.contracts.common.v1";
 
 // Classification is the resource classification ladder (VIGIL_DOMAIN_BLUEPRINT §4.2).
 //
