@@ -6,6 +6,7 @@
 <!-- Modified by Kone Tshivhinda (Qoder) on 2026-11-03 — Recorded the P2 common-types slice and P1 residual blockers -->
 <!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P2 after WIT worlds and Kafka round-trip merge; claim P3 Warden Security Kernel -->
 <!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P3 Warden Security Kernel after bindings and PG18 security suite merge; claim P4 Forge Datasets & Lakehouse -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Close P4 Forge Datasets & Lakehouse after PR #90 merge; claim P5 Core Ontology Metadata Service -->
 
 # Vigil — Phases & Tasks (Master Project Plan)
 
@@ -185,7 +186,7 @@
 ---
 
 ## P4: Forge Datasets & Lakehouse
-**Status**: 🚀 In Progress - Kone Tshivhinda (Gemini 4 Argon) | Started: 2026-11-04
+**Status**: ✅ Complete - Kone Tshivhinda (Gemini 4 Argon) | Completed: 2026-11-04 (PR #90 `be43af7`)
 **Depends On**: P3
 **Blocks**: P6, P11, P12, P22–P26
 **Complexity**: High
@@ -208,7 +209,7 @@
 ---
 
 ## P5: Core — Ontology Metadata Service (OMS)
-**Status**: ⬜ Not Started
+**Status**: 🚀 In Progress - Kone Tshivhinda (Gemini 4 Argon) | Started: 2026-11-04
 **Depends On**: P3
 **Blocks**: P6–P9, P13, P15, P16, P22, P23, P31
 **Complexity**: High
