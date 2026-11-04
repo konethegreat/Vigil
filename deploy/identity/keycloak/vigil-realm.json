@@ -1,0 +1,154 @@
+{
+  "_comment": "Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Synthetic Keycloak OIDC realm configuration with MFA and marking claim mappers (P3 task 3.4)",
+  "id": "vigil-sovereign-realm",
+  "realm": "vigil",
+  "displayName": "Vigil Sovereign Operational Intelligence",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 900,
+  "ssoSessionMaxLifespan": 28800,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "roles": {
+    "realm": [
+      {
+        "name": "vigil-analyst",
+        "description": "Operational analyst role with read/search/traverse access gated by Warden labels"
+      },
+      {
+        "name": "vigil-investigator",
+        "description": "Case investigator role eligible for CASE-<n> compartment memberships"
+      },
+      {
+        "name": "vigil-data-steward",
+        "description": "Privileged data steward role (requires WebAuthn/TOTP MFA) for schema and marking governance"
+      },
+      {
+        "name": "vigil-dpo",
+        "description": "Privileged Information Officer / DPO role (requires WebAuthn/TOTP MFA) for W8/W9/s15 approvals"
+      },
+      {
+        "name": "vigil-security-admin",
+        "description": "Privileged security administrator role (requires WebAuthn/TOTP MFA) for custodian ceremonies"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "marking-pii",
+      "path": "/markings/PII",
+      "attributes": {
+        "vigil_marking": ["PII"]
+      }
+    },
+    {
+      "name": "marking-org-transnet-demo",
+      "path": "/markings/ORG-TRANSNET-DEMO",
+      "attributes": {
+        "vigil_marking": ["ORG-TRANSNET-DEMO"]
+      }
+    },
+    {
+      "name": "releasability-za",
+      "path": "/releasability/REL-ZA",
+      "attributes": {
+        "vigil_releasability": ["REL-ZA"]
+      }
+    },
+    {
+      "name": "releasability-sadc",
+      "path": "/releasability/REL-SADC",
+      "attributes": {
+        "vigil_releasability": ["REL-SADC"]
+      }
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "vigil-warden-claims",
+      "description": "Maps Keycloak user attributes and group memberships to Warden PolicyContext JWT claims",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "vigil-tenant-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "vigil_tenant",
+            "claim.name": "vigil_tenant",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "vigil-clearance-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "vigil_clearance",
+            "claim.name": "vigil_clearance",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "vigil-markings-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "vigil_markings",
+            "claim.name": "vigil_markings",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "vigil-releasability-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "vigil_releasability",
+            "claim.name": "vigil_releasability",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

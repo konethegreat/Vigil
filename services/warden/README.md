@@ -1,4 +1,5 @@
 <!-- Written by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Warden Security Kernel documentation (P3 tasks 3.1, 3.2, 3.3, 3.5, 3.7) -->
+<!-- Modified by Kone Tshivhinda (Gemini 4 Argon) on 2026-11-04 - Document pushdown compilers, KMS v1, and PostgreSQL 18 security DDL migrations (P3 tasks 3.4, 3.6, 3.8) -->
 # Warden Security Kernel (`services/warden`)
 
 `services/warden` is the Rust security kernel for Vigil (P3). Every read, write,
@@ -51,6 +52,28 @@ No service reads or writes tenant data around it (ADR-0005).
     from [`docs/VIGIL_DOMAIN_BLUEPRINT.md`](../../docs/VIGIL_DOMAIN_BLUEPRINT.md)
     section 4.5, and adversarial edge cases, plus 500 randomized lattice
     property tests verifying commutativity, idempotence, and marking monotonicity.
+- **Store-native pushdown compilers ([`src/pushdown.rs`](src/pushdown.rs), task 3.6):**
+  - PostgreSQL RLS policy compiler (`compile_postgres_rls_policies`),
+    `security_invoker` column-masking view compiler
+    (`compile_postgres_masking_view`), signed `vigil.policy_ctx` token
+    issuer (`sign_postgres_policy_ctx`), OpenSearch DLS/FLS query compiler
+    (`compile_opensearch_dls_fls`), S3/Polaris 15-minute scoped credential rule
+    compiler (`compile_s3_scoped_rule`), and W8 shadow-table swap
+    declassification verifier (`verify_shadow_swap_labels`).
+- **Key management v1 ([`src/kms.rs`](src/kms.rs), task 3.8):**
+  - `KmsEnvelopeProvider` and `InMemoryOpenBaoKms` implementing `TenantKekRef`
+    -> `WrappedDek` hierarchy, class-specific `KeyChannel` isolation (`Pii`,
+    `SpecialPi`, `CriminalConduct`, `Child`, `Justification`, `DatasetObject`),
+    canonical AAD binding (`build_cipher_text_aad`), and dual-custodian
+    `KeyCeremonyRecord` verification.
+- **PostgreSQL 18 Control-Plane and Per-Tenant Security DDL ([`sql/`](sql/), tasks 3.4, 3.7, 3.8):**
+  - Control-plane (`vigil_control`):
+    - [`sql/control/V3_000__create_tenancy.sql`](sql/control/V3_000__create_tenancy.sql): `tenancy.tenant` with `kms_key_ref` URI guard.
+    - [`sql/control/V3_001__create_audit_ledger.sql`](sql/control/V3_001__create_audit_ledger.sql): `audit.chain_head`, `audit.audit_inbox`, `audit.audit_ledger`, and `audit.forbid_mutation()`.
+    - [`sql/control/V3_002__create_warden_registry.sql`](sql/control/V3_002__create_warden_registry.sql): `warden.marking`, `warden.purpose`, and `warden.gate_authorisation`.
+  - Per-tenant (`vigil_t_<slug>`):
+    - [`sql/tenant/V3_001__create_vigil_sec.sql`](sql/tenant/V3_001__create_vigil_sec.sql): `vigil_sec.ctx_key`, `vigil_sec.verified_payload()`, `vigil_sec.apply_ctx()`, `vigil_sec.ctx_ok()`, `vigil_sec.ctx_markings()`, `vigil_sec.ctx_clearance()`, `vigil_sec.ctx_releasability()`, `vigil_sec.ctx_purpose()`, and `vigil_sec.object_rid()`.
+    - [`sql/tenant/V3_002__create_justification.sql`](sql/tenant/V3_002__create_justification.sql): `vigil_sec.justification` with `vigil_sec.forbid_justification_mutation()`.
 
 ## Running checks
 
