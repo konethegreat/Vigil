@@ -7,7 +7,7 @@ COPY build.gradle.kts settings.gradle.kts gradle.properties gradle.lockfile ./
 COPY services/core services/core
 RUN gradle --no-daemon bootJar
 
-FROM eclipse-temurin:25-jre@sha256:bb036ed6cfdc57e3da7c22634d15f1b840d2caf76183861c80e81ca4b5104abb AS runtime
+FROM eclipse-temurin:25-jre@sha256:ecdc0adb37bde1a281c4d245a3cd535004b1fc8322d560f5b09463b248c81df0 AS runtime
 WORKDIR /app
 COPY --from=build /workspace/build/libs/vigil-core-0.1.0.jar app.jar
 USER 10001:10001
