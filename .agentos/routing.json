@@ -1,0 +1,12 @@
+{
+  "allowed_tools": [
+    "Bash(npm test*)",
+    "Bash(node *)"
+  ],
+  "allow_merge": true,
+  "autonomy": {
+    "enabled": true,
+    "level": "full",
+    "brief": "Vigil rules: branch names chore|fix|feature/<slug> (feature/P<ID>-<slug>), PR title type(repo|P<ID>): summary, append one WORKLOG.md row per commit (append-only, newest at bottom), keep docs/PHASES_AND_TASKS.md and docs/AI_COMMUNICATION.md current, target develop. Start by researching the repository and proposing docs/PHASES.md and docs/TASKS.md in order, then work tasks one reviewed PR at a time. Never commit secrets or .env files."
+  }
+}
