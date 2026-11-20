@@ -30,7 +30,7 @@ sourceSets {
 dependencyLocking { lockAllConfigurations() }
 configurations.configureEach {
     // google-java-format 1.30.0 pulls Guava 32.1.3 (CVE-2026-102554); 33.7.2 is binary compatible.
-    resolutionStrategy.force("com.google.guava:guava:33.7.2-jre")
+    resolutionStrategy.force("com.google.guava:guava:33.8.0-jre")
 }
 tasks.test { useJUnitPlatform(); finalizedBy(tasks.jacocoTestReport) }
 tasks.jacocoTestReport { dependsOn(tasks.test); reports { xml.required = true; html.required = true } }
